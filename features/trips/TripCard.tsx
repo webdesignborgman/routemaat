@@ -23,7 +23,7 @@ const dateFormatter = new Intl.DateTimeFormat("nl-NL", {
 
 export function TripCard({ trip }: TripCardProps) {
   return (
-    <Card className="border-cyan-100 bg-white/95 shadow-[0_18px_45px_rgba(14,165,233,0.12)]">
+    <Card className="border-cyan-100 bg-white/95 shadow-[0_18px_45px_rgba(14,165,233,0.12)] transition-shadow hover:shadow-[0_20px_50px_rgba(236,72,153,0.12)]">
       <CardHeader>
         <CardTitle className="text-xl text-slate-950">{trip.name}</CardTitle>
         <CardDescription className="flex items-center gap-2 text-slate-600">
@@ -46,7 +46,10 @@ export function TripCard({ trip }: TripCardProps) {
             <span>{trip.memberCount} leden</span>
           </div>
         </div>
-        <Button asChild className="w-full bg-slate-950 text-white hover:bg-slate-800">
+        <Button
+          asChild
+          className="w-full bg-slate-950 text-white shadow-[0_0_22px_rgba(34,211,238,0.24)] hover:bg-slate-800"
+        >
           <Link href={`/trips/${trip.id}`}>Bekijk reis</Link>
         </Button>
       </CardContent>

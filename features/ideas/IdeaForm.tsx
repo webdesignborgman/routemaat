@@ -54,14 +54,27 @@ function getInitialValues(idea?: TripIdea): IdeaFormValues {
 export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
   const initialValues = useMemo(() => getInitialValues(idea), [idea]);
   const [values, setValues] = useState<IdeaFormValues>(initialValues);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const titleIsValid = values.title.trim().length > 0;
+  const showTitleError = submitAttempted && !titleIsValid;
+
+  function updateValue<Key extends keyof IdeaFormValues>(
+    key: Key,
+    value: IdeaFormValues[Key]
+  ) {
+    setValues((currentValues) => ({
+      ...currentValues,
+      [key]: value,
+    }));
+  }
 
   return (
     <form
       className="space-y-5"
       onSubmit={(event) => {
         event.preventDefault();
+        setSubmitAttempted(true);
         if (!titleIsValid) {
           return;
         }
@@ -74,34 +87,37 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           <Input
             id="idea-title"
             value={values.title}
-            onChange={(event) =>
-              setValues({ ...values, title: event.target.value })
-            }
+            onChange={(event) => updateValue("title", event.target.value)}
             placeholder="Bijvoorbeeld: Fushimi Inari vroeg bezoeken"
             required
+            aria-invalid={showTitleError}
+            aria-describedby={showTitleError ? "idea-title-error" : undefined}
           />
+          {showTitleError ? (
+            <p id="idea-title-error" className="text-sm font-medium text-pink-700">
+              Vul een titel in om dit idee op te slaan.
+            </p>
+          ) : null}
         </div>
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="idea-description">Omschrijving</Label>
           <Textarea
             id="idea-description"
             value={values.description}
-            onChange={(event) =>
-              setValues({ ...values, description: event.target.value })
-            }
+            onChange={(event) => updateValue("description", event.target.value)}
             placeholder="Waarom is dit leuk of handig?"
             rows={3}
           />
         </div>
         <div className="space-y-2">
-          <Label>Categorie</Label>
+          <Label htmlFor="idea-category">Categorie</Label>
           <Select
             value={values.category}
             onValueChange={(value) =>
-              setValues({ ...values, category: value as IdeaCategory })
+              updateValue("category", value as IdeaCategory)
             }
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="idea-category" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -114,14 +130,14 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Status</Label>
+          <Label htmlFor="idea-status">Status</Label>
           <Select
             value={values.status}
             onValueChange={(value) =>
-              setValues({ ...values, status: value as IdeaStatus })
+              updateValue("status", value as IdeaStatus)
             }
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="idea-status" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -134,14 +150,14 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Prioriteit</Label>
+          <Label htmlFor="idea-priority">Prioriteit</Label>
           <Select
             value={values.priority}
             onValueChange={(value) =>
-              setValues({ ...values, priority: value as IdeaPriority })
+              updateValue("priority", value as IdeaPriority)
             }
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="idea-priority" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -158,9 +174,7 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           <Input
             id="idea-city"
             value={values.city}
-            onChange={(event) =>
-              setValues({ ...values, city: event.target.value })
-            }
+            onChange={(event) => updateValue("city", event.target.value)}
             placeholder="Tokyo"
           />
         </div>
@@ -169,9 +183,7 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           <Input
             id="idea-location"
             value={values.locationName}
-            onChange={(event) =>
-              setValues({ ...values, locationName: event.target.value })
-            }
+            onChange={(event) => updateValue("locationName", event.target.value)}
             placeholder="Shibuya Sky"
           />
         </div>
@@ -180,9 +192,7 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           <Input
             id="idea-maps"
             value={values.googleMapsUrl}
-            onChange={(event) =>
-              setValues({ ...values, googleMapsUrl: event.target.value })
-            }
+            onChange={(event) => updateValue("googleMapsUrl", event.target.value)}
             placeholder="https://maps.google.com/..."
             type="url"
           />
@@ -192,9 +202,7 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           <Input
             id="idea-website"
             value={values.websiteUrl}
-            onChange={(event) =>
-              setValues({ ...values, websiteUrl: event.target.value })
-            }
+            onChange={(event) => updateValue("websiteUrl", event.target.value)}
             placeholder="https://..."
             type="url"
           />
@@ -204,9 +212,7 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           <Input
             id="idea-tags"
             value={values.tagsText}
-            onChange={(event) =>
-              setValues({ ...values, tagsText: event.target.value })
-            }
+            onChange={(event) => updateValue("tagsText", event.target.value)}
             placeholder="Tokyo, eten, regenplan"
           />
         </div>
@@ -215,22 +221,25 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           <Textarea
             id="idea-notes"
             value={values.notes}
-            onChange={(event) =>
-              setValues({ ...values, notes: event.target.value })
-            }
+            onChange={(event) => updateValue("notes", event.target.value)}
             placeholder="Praktische details, timing of afspraken"
             rows={3}
           />
         </div>
       </div>
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" onClick={onCancel}>
+      <div className="flex flex-col-reverse gap-2 border-t border-cyan-100 pt-4 sm:flex-row sm:justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={onCancel}
+        >
           Annuleren
         </Button>
         <Button
           type="submit"
           disabled={!titleIsValid}
-          className="bg-slate-950 text-white hover:bg-slate-800"
+          className="w-full bg-slate-950 text-white shadow-[0_0_20px_rgba(34,211,238,0.28)] hover:bg-slate-800 sm:w-auto"
         >
           Opslaan
         </Button>

@@ -87,7 +87,7 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
         </Card>
       </div>
 
-      <section className="mt-6 rounded-xl border border-pink-100 bg-white/90 p-5 shadow-[0_14px_35px_rgba(236,72,153,0.08)]">
+      <section className="mt-6 rounded-xl border border-pink-100 bg-white/95 p-4 shadow-[0_14px_35px_rgba(236,72,153,0.08)] sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-slate-950">Ideeënmodule</h2>
@@ -96,7 +96,11 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
               notities op één plek.
             </p>
           </div>
-          <Button asChild variant="outline" className="border-cyan-200 bg-white">
+          <Button
+            asChild
+            variant="outline"
+            className="w-full border-cyan-200 bg-white sm:w-auto"
+          >
             <Link href={`/trips/${trip.id}/ideas`}>Open ideeën</Link>
           </Button>
         </div>

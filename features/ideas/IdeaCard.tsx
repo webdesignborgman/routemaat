@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 type IdeaCardProps = {
   idea: TripIdea;
   onEdit: (idea: TripIdea) => void;
-  onDelete: (ideaId: string) => void;
+  onDelete: (idea: TripIdea) => void;
 };
 
 const statusStyles: Record<IdeaStatus, string> = {
@@ -44,14 +44,16 @@ export function IdeaCard({ idea, onEdit, onDelete }: IdeaCardProps) {
   const place = [idea.city, idea.locationName].filter(Boolean).join(" - ");
 
   return (
-    <Card className="border-cyan-100 bg-white/95 shadow-[0_14px_35px_rgba(14,165,233,0.10)]">
-      <CardHeader className="gap-3">
+    <Card className="border-cyan-100 bg-white/95 shadow-[0_14px_35px_rgba(14,165,233,0.10)] transition-shadow hover:shadow-[0_18px_42px_rgba(236,72,153,0.12)]">
+      <CardHeader className="gap-3 pb-1">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-2">
             <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100">
               {ideaCategoryLabels[idea.category]}
             </Badge>
-            <CardTitle className="text-xl text-slate-950">{idea.title}</CardTitle>
+            <CardTitle className="break-words text-xl text-slate-950">
+              {idea.title}
+            </CardTitle>
           </div>
           <div className="flex shrink-0 gap-1">
             <Button
@@ -72,7 +74,7 @@ export function IdeaCard({ idea, onEdit, onDelete }: IdeaCardProps) {
               variant="ghost"
               size="icon"
               className="text-slate-500 hover:text-pink-700"
-              onClick={() => onDelete(idea.id)}
+              onClick={() => onDelete(idea)}
             >
               <Trash2 className="size-4" aria-hidden="true" />
             </Button>
@@ -87,7 +89,9 @@ export function IdeaCard({ idea, onEdit, onDelete }: IdeaCardProps) {
           </p>
         ) : null}
         {idea.description ? (
-          <p className="text-sm leading-6 text-slate-600">{idea.description}</p>
+          <p className="break-words text-sm leading-6 text-slate-600">
+            {idea.description}
+          </p>
         ) : null}
         <div className="flex flex-wrap gap-2">
           <span

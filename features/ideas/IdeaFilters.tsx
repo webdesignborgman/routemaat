@@ -1,5 +1,6 @@
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,13 +36,47 @@ export function IdeaFilters({
   availableTags,
   onChange,
 }: IdeaFiltersProps) {
+  const hasActiveFilters =
+    filters.query.trim().length > 0 ||
+    filters.category !== "all" ||
+    filters.status !== "all" ||
+    filters.priority !== "all" ||
+    filters.tag !== "all";
+
+  function clearFilters() {
+    onChange({
+      query: "",
+      category: "all",
+      status: "all",
+      priority: "all",
+      tag: "all",
+    });
+  }
+
   return (
-    <section className="rounded-xl border border-cyan-100 bg-white/90 p-4 shadow-[0_12px_30px_rgba(14,165,233,0.08)]">
-      <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
-        <SlidersHorizontal className="size-4 text-cyan-600" aria-hidden="true" />
-        Filters
+    <section className="rounded-xl border border-cyan-100 bg-white/95 p-3 shadow-[0_12px_30px_rgba(14,165,233,0.08)] sm:p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <SlidersHorizontal
+            className="size-4 text-cyan-600"
+            aria-hidden="true"
+          />
+          Filters
+        </div>
+        {hasActiveFilters ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-slate-600 hover:text-pink-700"
+            onClick={clearFilters}
+          >
+            <X className="size-4" aria-hidden="true" />
+            Wissen
+          </Button>
+        ) : null}
       </div>
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
         <div className="space-y-2">
           <Label htmlFor="idea-search">Zoeken</Label>
           <div className="relative">
@@ -61,7 +96,7 @@ export function IdeaFilters({
           </div>
         </div>
         <div className="space-y-2">
-          <Label>Categorie</Label>
+          <Label htmlFor="filter-category">Categorie</Label>
           <Select
             value={filters.category}
             onValueChange={(value) =>
@@ -71,7 +106,7 @@ export function IdeaFilters({
               })
             }
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="filter-category" className="w-full">
               <SelectValue placeholder="Alle categorieën" />
             </SelectTrigger>
             <SelectContent>
@@ -85,14 +120,14 @@ export function IdeaFilters({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Status</Label>
+          <Label htmlFor="filter-status">Status</Label>
           <Select
             value={filters.status}
             onValueChange={(value) =>
               onChange({ ...filters, status: value as IdeaStatus | "all" })
             }
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="filter-status" className="w-full">
               <SelectValue placeholder="Alle statussen" />
             </SelectTrigger>
             <SelectContent>
@@ -106,7 +141,7 @@ export function IdeaFilters({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Prioriteit</Label>
+          <Label htmlFor="filter-priority">Prioriteit</Label>
           <Select
             value={filters.priority}
             onValueChange={(value) =>
@@ -116,7 +151,7 @@ export function IdeaFilters({
               })
             }
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="filter-priority" className="w-full">
               <SelectValue placeholder="Alle prioriteiten" />
             </SelectTrigger>
             <SelectContent>
@@ -130,12 +165,12 @@ export function IdeaFilters({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Tag</Label>
+          <Label htmlFor="filter-tag">Tag</Label>
           <Select
             value={filters.tag}
             onValueChange={(value) => onChange({ ...filters, tag: value })}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="filter-tag" className="w-full">
               <SelectValue placeholder="Alle tags" />
             </SelectTrigger>
             <SelectContent>

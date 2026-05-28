@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Sparkles } from "lucide-react";
+import { Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -137,6 +138,7 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
   const [filters, setFilters] = useState<IdeaFiltersType>(defaultFilters);
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingIdea, setEditingIdea] = useState<TripIdea | undefined>();
+  const [ideaToDelete, setIdeaToDelete] = useState<TripIdea | null>(null);
 
   const availableTags = useMemo(() => {
     const tags = ideas.flatMap((idea) => idea.tags);
@@ -183,8 +185,19 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
     closeDialog();
   }
 
-  function handleDelete(ideaId: string) {
-    setIdeas((currentIdeas) => currentIdeas.filter((idea) => idea.id !== ideaId));
+  function handleDelete(idea: TripIdea) {
+    setIdeaToDelete(idea);
+  }
+
+  function confirmDelete() {
+    if (!ideaToDelete) {
+      return;
+    }
+
+    setIdeas((currentIdeas) =>
+      currentIdeas.filter((idea) => idea.id !== ideaToDelete.id)
+    );
+    setIdeaToDelete(null);
   }
 
   return (
@@ -210,6 +223,12 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
         availableTags={availableTags}
         onChange={setFilters}
       />
+
+      {ideas.length > 0 ? (
+        <div className="rounded-xl border border-cyan-100 bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_24px_rgba(14,165,233,0.06)]">
+          {filteredIdeas.length} van {ideas.length} ideeën zichtbaar
+        </div>
+      ) : null}
 
       {ideas.length === 0 ? (
         <EmptyState
@@ -238,8 +257,11 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
         </div>
       )}
 
-      <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
+      <Dialog
+        open={dialogMode !== null}
+        onOpenChange={(open) => !open && closeDialog()}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto border-cyan-100 bg-white shadow-[0_22px_70px_rgba(14,165,233,0.18)] sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>
               {dialogMode === "edit" ? "Idee bewerken" : "Idee toevoegen"}
@@ -254,6 +276,43 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
             onSubmit={handleSubmit}
             onCancel={closeDialog}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={ideaToDelete !== null}
+        onOpenChange={(open) => !open && setIdeaToDelete(null)}
+      >
+        <DialogContent className="border-cyan-100 bg-white shadow-[0_22px_70px_rgba(236,72,153,0.14)] sm:max-w-md">
+          <DialogHeader>
+            <div className="mb-1 flex size-10 items-center justify-center rounded-full bg-pink-50 text-pink-700">
+              <Trash2 className="size-5" aria-hidden="true" />
+            </div>
+            <DialogTitle>Idee verwijderen?</DialogTitle>
+            <DialogDescription>
+              {ideaToDelete
+                ? `"${ideaToDelete.title}" wordt uit deze lijst verwijderd.`
+                : "Dit idee wordt uit deze lijst verwijderd."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setIdeaToDelete(null)}
+            >
+              Annuleren
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="w-full sm:w-auto"
+              onClick={confirmDelete}
+            >
+              Verwijderen
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
