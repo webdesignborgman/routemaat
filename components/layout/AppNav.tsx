@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Home, Route } from "lucide-react";
 
+import { UserMenu } from "@/features/auth/UserMenu";
+
 const navItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/trips", label: "Reizen", icon: Route },
@@ -8,12 +10,12 @@ const navItems = [
 
 export function AppNav() {
   return (
-    <nav className="hidden border-b border-cyan-100 bg-white/80 backdrop-blur md:block">
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-3 lg:px-8">
+    <header className="border-b border-cyan-100 bg-white/80 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <Link href="/" className="text-base font-semibold text-slate-950">
           RouteMaat
         </Link>
-        <div className="flex items-center gap-2">
+        <nav className="hidden items-center gap-2 md:flex">
           {navItems.map((item) => {
             const Icon = item.icon;
 
@@ -28,8 +30,9 @@ export function AppNav() {
               </Link>
             );
           })}
-        </div>
+        </nav>
+        <UserMenu />
       </div>
-    </nav>
+    </header>
   );
 }

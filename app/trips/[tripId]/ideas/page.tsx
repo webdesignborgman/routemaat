@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { IdeasRouteClient } from "@/features/ideas/IdeasRouteClient";
 
 type IdeasPageProps = {
@@ -10,7 +11,9 @@ export default async function IdeasPage({ params }: IdeasPageProps) {
 
   return (
     <AppShell>
-      <IdeasRouteClient tripId={tripId} />
+      <ProtectedRoute>
+        <IdeasRouteClient tripId={tripId} />
+      </ProtectedRoute>
     </AppShell>
   );
 }

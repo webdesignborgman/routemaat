@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { TripDetailPageClient } from "@/features/trips/TripDetailPageClient";
 
 type TripDetailPageProps = {
@@ -10,7 +11,9 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
 
   return (
     <AppShell>
-      <TripDetailPageClient tripId={tripId} />
+      <ProtectedRoute>
+        <TripDetailPageClient tripId={tripId} />
+      </ProtectedRoute>
     </AppShell>
   );
 }

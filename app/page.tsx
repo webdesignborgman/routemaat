@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { ArrowRight, Lightbulb, MapPinned, Route, Sparkles } from "lucide-react";
+import { Lightbulb, MapPinned, Route, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/layout/AppShell";
-import { Button } from "@/components/ui/button";
+import { HomeAuthAction } from "@/features/auth/HomeAuthAction";
 
 const highlights = [
   {
@@ -45,16 +44,7 @@ export default function Home() {
             </p>
           </div>
 
-          <Button
-            asChild
-            size="lg"
-            className="bg-slate-950 text-white shadow-[0_0_26px_rgba(34,211,238,0.35)] hover:bg-slate-800"
-          >
-            <Link href="/trips">
-              Naar reizen
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
-          </Button>
+          <HomeAuthAction />
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">

@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/features/auth/useAuth";
 import {
   loadStoredTrips,
   mergeTrips,
@@ -47,6 +48,7 @@ function defaultDateValue() {
 
 export function TripsPageClient() {
   const router = useRouter();
+  const { user } = useAuth();
   const [trips, setTrips] = useState<Trip[]>(mockTrips);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -138,8 +140,8 @@ export function TripsPageClient() {
       description: description.trim() || undefined,
       startDate,
       endDate,
-      createdBy: demoUserId,
-      memberIds: [demoUserId],
+      createdBy: user?.uid ?? demoUserId,
+      memberIds: [user?.uid ?? demoUserId],
       createdAt: now,
       updatedAt: now,
     };
