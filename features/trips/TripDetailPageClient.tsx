@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
+  CalendarClock,
   FileText,
+  Languages,
   Lightbulb,
   MapPin,
   Route,
@@ -73,17 +75,25 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
   const quickActions = useMemo<QuickAction[]>(
     () => [
       {
-        title: "Ideeën",
-        description: "Plekken, restaurants, links en notities.",
+        title: "Reisschema",
+        description: "Bekijk geplande activiteiten per dag.",
+        icon: CalendarClock,
+        href: trip ? `/trips/${trip.id}/schedule` : undefined,
+        accentClassName: "bg-pink-50 text-pink-600",
+      },
+      {
+        title: "Ideeën / Activiteiten",
+        description: "Plekken, activiteiten, links en notities.",
         icon: Lightbulb,
         href: trip ? `/trips/${trip.id}/ideas` : undefined,
         accentClassName: "bg-cyan-50 text-cyan-700",
       },
       {
-        title: "Planning",
-        description: "Binnenkort beschikbaar.",
-        icon: CalendarDays,
-        accentClassName: "bg-pink-50 text-pink-600",
+        title: "Taal",
+        description: "Bewaar handige zinnen voor onderweg.",
+        icon: Languages,
+        href: trip ? `/trips/${trip.id}/language` : undefined,
+        accentClassName: "bg-lime-50 text-lime-700",
       },
       {
         title: "Documenten",
@@ -135,7 +145,7 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
           >
             <Link href={`/trips/${trip.id}/ideas`}>
               <Lightbulb className="size-4" aria-hidden="true" />
-              Naar ideeën
+              Naar ideeën / activiteiten
             </Link>
           </Button>
         }
@@ -199,7 +209,7 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
             gereserveerd voor later.
           </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {quickActions.map((action) => (
             <QuickActionCard key={action.title} action={action} />
           ))}

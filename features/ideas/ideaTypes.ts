@@ -27,6 +27,11 @@ export type TripIdea = {
   googleMapsUrl?: string;
   websiteUrl?: string;
   notes?: string;
+  customsNotes?: string;
+  showInSchedule: boolean;
+  scheduleDate?: string;
+  startTime?: string;
+  endTime?: string;
   status: IdeaStatus;
   priority: IdeaPriority;
   addedBy: string;
@@ -45,6 +50,11 @@ export type IdeaFormValues = {
   googleMapsUrl: string;
   websiteUrl: string;
   notes: string;
+  customsNotes: string;
+  showInSchedule: boolean;
+  scheduleDate: string;
+  startTime: string;
+  endTime: string;
   tagsText: string;
 };
 

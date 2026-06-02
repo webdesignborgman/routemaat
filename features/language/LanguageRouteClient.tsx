@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Lightbulb } from "lucide-react";
+import { Languages } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { IdeasPageClient } from "@/features/ideas/IdeasPageClient";
+import { LanguagePageClient } from "@/features/language/LanguagePageClient";
 import { loadStoredTrips } from "@/features/trips/tripClientStorage";
 import { getTripById } from "@/features/trips/tripMockData";
+import type { Trip } from "@/features/trips/tripTypes";
 
-type IdeasRouteClientProps = {
+type LanguageRouteClientProps = {
   tripId: string;
 };
 
-export function IdeasRouteClient({ tripId }: IdeasRouteClientProps) {
+export function LanguageRouteClient({ tripId }: LanguageRouteClientProps) {
   const mockTrip = getTripById(tripId) ?? null;
-  const [storedTrip, setStoredTrip] = useState(() => getTripById(tripId) ?? null);
+  const [storedTrip, setStoredTrip] = useState<Trip | null>(() => mockTrip);
   const [hasCheckedStoredTrips, setHasCheckedStoredTrips] = useState(
     Boolean(mockTrip)
   );
@@ -38,11 +39,9 @@ export function IdeasRouteClient({ tripId }: IdeasRouteClientProps) {
     return (
       <section className="rounded-xl border border-cyan-100 bg-white/85 px-5 py-12 text-center shadow-[0_18px_45px_rgba(14,165,233,0.10)]">
         <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">
-          <Lightbulb className="size-5" aria-hidden="true" />
+          <Languages className="size-5" aria-hidden="true" />
         </div>
-        <h1 className="text-xl font-semibold text-slate-950">
-          Ideeën / activiteiten laden
-        </h1>
+        <h1 className="text-xl font-semibold text-slate-950">Taal laden</h1>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
           We zoeken deze reis in de tijdelijke mocklijst.
         </p>
@@ -54,13 +53,13 @@ export function IdeasRouteClient({ tripId }: IdeasRouteClientProps) {
     return (
       <section className="rounded-xl border border-dashed border-cyan-200 bg-white/85 px-5 py-12 text-center shadow-[0_18px_45px_rgba(14,165,233,0.10)]">
         <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">
-          <Lightbulb className="size-5" aria-hidden="true" />
+          <Languages className="size-5" aria-hidden="true" />
         </div>
         <h1 className="text-xl font-semibold text-slate-950">
           Reis niet gevonden
         </h1>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
-          Open eerst een bekende reis voordat je ideeën bekijkt.
+          Open eerst een bekende reis voordat je de taallijst bekijkt.
         </p>
         <Button
           asChild
@@ -72,5 +71,5 @@ export function IdeasRouteClient({ tripId }: IdeasRouteClientProps) {
     );
   }
 
-  return <IdeasPageClient trip={trip} />;
+  return <LanguagePageClient trip={trip} />;
 }

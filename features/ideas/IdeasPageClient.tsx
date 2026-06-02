@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -14,9 +14,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { IdeaCard } from "@/features/ideas/IdeaCard";
+import { loadTripIdeas, saveTripIdeas } from "@/features/ideas/ideaClientStorage";
 import { IdeaFilters } from "@/features/ideas/IdeaFilters";
 import { IdeaForm } from "@/features/ideas/IdeaForm";
-import { mockIdeas } from "@/features/ideas/ideaMockData";
 import type {
   IdeaFilters as IdeaFiltersType,
   IdeaFormValues,
@@ -105,6 +105,13 @@ function createIdea(values: IdeaFormValues, tripId: string): TripIdea {
     googleMapsUrl: optionalText(values.googleMapsUrl),
     websiteUrl: optionalText(values.websiteUrl),
     notes: optionalText(values.notes),
+    customsNotes: optionalText(values.customsNotes),
+    showInSchedule: values.showInSchedule,
+    scheduleDate: values.showInSchedule
+      ? optionalText(values.scheduleDate)
+      : undefined,
+    startTime: values.showInSchedule ? optionalText(values.startTime) : undefined,
+    endTime: values.showInSchedule ? optionalText(values.endTime) : undefined,
     status: values.status,
     priority: values.priority,
     addedBy: "mock-user",
@@ -125,6 +132,13 @@ function updateIdea(idea: TripIdea, values: IdeaFormValues): TripIdea {
     googleMapsUrl: optionalText(values.googleMapsUrl),
     websiteUrl: optionalText(values.websiteUrl),
     notes: optionalText(values.notes),
+    customsNotes: optionalText(values.customsNotes),
+    showInSchedule: values.showInSchedule,
+    scheduleDate: values.showInSchedule
+      ? optionalText(values.scheduleDate)
+      : undefined,
+    startTime: values.showInSchedule ? optionalText(values.startTime) : undefined,
+    endTime: values.showInSchedule ? optionalText(values.endTime) : undefined,
     status: values.status,
     priority: values.priority,
     updatedAt: new Date(),
@@ -132,13 +146,19 @@ function updateIdea(idea: TripIdea, values: IdeaFormValues): TripIdea {
 }
 
 export function IdeasPageClient({ trip }: IdeasPageClientProps) {
-  const [ideas, setIdeas] = useState<TripIdea[]>(() =>
-    mockIdeas.filter((idea) => idea.tripId === trip.id)
-  );
+  const [ideas, setIdeas] = useState<TripIdea[]>(() => loadTripIdeas(trip.id));
   const [filters, setFilters] = useState<IdeaFiltersType>(defaultFilters);
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingIdea, setEditingIdea] = useState<TripIdea | undefined>();
   const [ideaToDelete, setIdeaToDelete] = useState<TripIdea | null>(null);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setIdeas(loadTripIdeas(trip.id));
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [trip.id]);
 
   const availableTags = useMemo(() => {
     const tags = ideas.flatMap((idea) => idea.tags);
@@ -174,13 +194,19 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
 
   function handleSubmit(values: IdeaFormValues) {
     if (dialogMode === "edit" && editingIdea) {
-      setIdeas((currentIdeas) =>
-        currentIdeas.map((idea) =>
+      setIdeas((currentIdeas) => {
+        const nextIdeas = currentIdeas.map((idea) =>
           idea.id === editingIdea.id ? updateIdea(idea, values) : idea
-        )
-      );
+        );
+        saveTripIdeas(trip.id, nextIdeas);
+        return nextIdeas;
+      });
     } else {
-      setIdeas((currentIdeas) => [createIdea(values, trip.id), ...currentIdeas]);
+      setIdeas((currentIdeas) => {
+        const nextIdeas = [createIdea(values, trip.id), ...currentIdeas];
+        saveTripIdeas(trip.id, nextIdeas);
+        return nextIdeas;
+      });
     }
     closeDialog();
   }
@@ -194,17 +220,19 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
       return;
     }
 
-    setIdeas((currentIdeas) =>
-      currentIdeas.filter((idea) => idea.id !== ideaToDelete.id)
-    );
+    setIdeas((currentIdeas) => {
+      const nextIdeas = currentIdeas.filter((idea) => idea.id !== ideaToDelete.id);
+      saveTripIdeas(trip.id, nextIdeas);
+      return nextIdeas;
+    });
     setIdeaToDelete(null);
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Ideeën"
-        description={`Verzamel plekken, restaurants en praktische tips voor ${trip.title}.`}
+        title="Ideeën / Activiteiten"
+        description={`Verzamel plekken, restaurants, activiteiten en praktische tips voor ${trip.title}.`}
         backHref={`/trips/${trip.id}`}
         action={
           <Button
@@ -213,7 +241,7 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
             className="w-full bg-slate-950 text-white shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:bg-slate-800 sm:w-auto"
           >
             <Plus className="size-4" aria-hidden="true" />
-            Idee toevoegen
+            Idee / activiteit toevoegen
           </Button>
         }
       />
@@ -226,21 +254,21 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
 
       {ideas.length > 0 ? (
         <div className="rounded-xl border border-cyan-100 bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_24px_rgba(14,165,233,0.06)]">
-          {filteredIdeas.length} van {ideas.length} ideeën zichtbaar
+          {filteredIdeas.length} van {ideas.length} ideeën / activiteiten zichtbaar
         </div>
       ) : null}
 
       {ideas.length === 0 ? (
         <EmptyState
-          title="Geen ideeën gevonden"
-          description="Voeg het eerste idee toe voor deze reis."
-          actionLabel="Idee toevoegen"
+          title="Geen ideeën / activiteiten gevonden"
+          description="Voeg het eerste idee of de eerste activiteit toe voor deze reis."
+          actionLabel="Idee / activiteit toevoegen"
           onAction={openCreateDialog}
         />
       ) : filteredIdeas.length === 0 ? (
         <EmptyState
           title="Geen resultaten"
-          description="Pas je zoekterm of filters aan om weer ideeën te zien."
+          description="Pas je zoekterm of filters aan om weer ideeën en activiteiten te zien."
           actionLabel={hasActiveFilters ? "Filters wissen" : undefined}
           onAction={hasActiveFilters ? () => setFilters(defaultFilters) : undefined}
         />
@@ -264,7 +292,9 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
         <DialogContent className="max-h-[90dvh] overflow-y-auto border-cyan-100 bg-white shadow-[0_22px_70px_rgba(14,165,233,0.18)] sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === "edit" ? "Idee bewerken" : "Idee toevoegen"}
+              {dialogMode === "edit"
+                ? "Idee / activiteit bewerken"
+                : "Idee / activiteit toevoegen"}
             </DialogTitle>
             <DialogDescription>
               Vul alleen in wat nu al bekend is. Details kunnen later worden aangepast.

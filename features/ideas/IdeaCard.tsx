@@ -1,4 +1,12 @@
-import { ExternalLink, MapPin, Pencil, StickyNote, Trash2 } from "lucide-react";
+import {
+  CalendarClock,
+  ExternalLink,
+  MapPin,
+  Pencil,
+  ScrollText,
+  StickyNote,
+  Trash2,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +21,7 @@ import {
   ideaPriorityLabels,
   ideaStatusLabels,
 } from "@/features/ideas/ideaLabels";
+import { formatScheduleDateTime } from "@/features/ideas/ideaScheduleUtils";
 import type {
   IdeaPriority,
   IdeaStatus,
@@ -51,9 +60,16 @@ export function IdeaCard({ idea, onEdit, onDelete }: IdeaCardProps) {
             <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100">
               {ideaCategoryLabels[idea.category]}
             </Badge>
-            <CardTitle className="break-words text-xl text-slate-950">
-              {idea.title}
-            </CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="break-words text-xl text-slate-950">
+                {idea.title}
+              </CardTitle>
+              {idea.showInSchedule ? (
+                <Badge className="bg-lime-100 text-lime-800 hover:bg-lime-100">
+                  In reisschema
+                </Badge>
+              ) : null}
+            </div>
           </div>
           <div className="flex shrink-0 gap-1">
             <Button
@@ -93,6 +109,19 @@ export function IdeaCard({ idea, onEdit, onDelete }: IdeaCardProps) {
             {idea.description}
           </p>
         ) : null}
+        {idea.showInSchedule ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-cyan-100 bg-cyan-50 px-3 py-2 text-sm text-cyan-800">
+            <CalendarClock
+              className="size-4 shrink-0 text-cyan-700"
+              aria-hidden="true"
+            />
+            {idea.scheduleDate ? (
+              <span className="text-cyan-700">
+                {formatScheduleDateTime(idea)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <span
             className={cn(
@@ -127,6 +156,18 @@ export function IdeaCard({ idea, onEdit, onDelete }: IdeaCardProps) {
               aria-hidden="true"
             />
             {idea.notes}
+          </p>
+        ) : null}
+        {idea.customsNotes ? (
+          <p className="flex gap-2 rounded-lg bg-pink-50 px-3 py-2 text-sm leading-6 text-pink-800">
+            <ScrollText
+              className="mt-0.5 size-4 shrink-0 text-pink-600"
+              aria-hidden="true"
+            />
+            <span>
+              <span className="font-medium">Gebruiken: </span>
+              {idea.customsNotes}
+            </span>
           </p>
         ) : null}
         <div className="flex flex-col gap-2 sm:flex-row">

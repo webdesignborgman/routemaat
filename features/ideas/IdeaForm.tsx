@@ -35,6 +35,13 @@ type IdeaFormProps = {
   onCancel: () => void;
 };
 
+type IdeaFormErrors = {
+  title?: string;
+  scheduleDate?: string;
+  startTime?: string;
+  endTime?: string;
+};
+
 function getInitialValues(idea?: TripIdea): IdeaFormValues {
   return {
     title: idea?.title ?? "",
@@ -47,8 +54,46 @@ function getInitialValues(idea?: TripIdea): IdeaFormValues {
     googleMapsUrl: idea?.googleMapsUrl ?? "",
     websiteUrl: idea?.websiteUrl ?? "",
     notes: idea?.notes ?? "",
+    customsNotes: idea?.customsNotes ?? "",
+    showInSchedule: idea?.showInSchedule ?? false,
+    scheduleDate: idea?.scheduleDate ?? "",
+    startTime: idea?.startTime ?? "",
+    endTime: idea?.endTime ?? "",
     tagsText: idea?.tags.join(", ") ?? "",
   };
+}
+
+function sanitizeTimeInput(value: string) {
+  return value.replace(/[^\d:]/g, "").slice(0, 5);
+}
+
+function normalizeTimeInput(value: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return "";
+  }
+
+  if (trimmedValue.includes(":")) {
+    const [rawHours = "", rawMinutes = ""] = trimmedValue.split(":");
+    const hours = rawHours.padStart(2, "0");
+    const minutes = rawMinutes.padEnd(2, "0").slice(0, 2);
+    const normalizedValue = `${hours}:${minutes}`;
+
+    return isValidTime(normalizedValue) ? normalizedValue : trimmedValue;
+  }
+
+  if (!/^\d{1,4}$/.test(trimmedValue)) {
+    return trimmedValue;
+  }
+
+  const paddedValue =
+    trimmedValue.length <= 2
+      ? `${trimmedValue.padStart(2, "0")}00`
+      : trimmedValue.padStart(4, "0");
+  const normalizedValue = `${paddedValue.slice(0, 2)}:${paddedValue.slice(2, 4)}`;
+
+  return isValidTime(normalizedValue) ? normalizedValue : trimmedValue;
 }
 
 export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
@@ -56,8 +101,11 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
   const [values, setValues] = useState<IdeaFormValues>(initialValues);
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
-  const titleIsValid = values.title.trim().length > 0;
-  const showTitleError = submitAttempted && !titleIsValid;
+  const errors = getValidationErrors(values);
+  const showTitleError = submitAttempted && Boolean(errors.title);
+  const showScheduleDateError = submitAttempted && Boolean(errors.scheduleDate);
+  const showStartTimeError = submitAttempted && Boolean(errors.startTime);
+  const showEndTimeError = submitAttempted && Boolean(errors.endTime);
 
   function updateValue<Key extends keyof IdeaFormValues>(
     key: Key,
@@ -69,19 +117,115 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
     }));
   }
 
+  function handleSubmit(valuesToSubmit: IdeaFormValues) {
+    setSubmitAttempted(true);
+
+    if (Object.keys(getValidationErrors(valuesToSubmit)).length > 0) {
+      return;
+    }
+
+    onSubmit(valuesToSubmit);
+  }
+
   return (
     <form
       className="space-y-5"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        setSubmitAttempted(true);
-        if (!titleIsValid) {
-          return;
-        }
-        onSubmit(values);
+        handleSubmit(values);
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-cyan-100 bg-cyan-50/70 p-4 sm:col-span-2">
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={values.showInSchedule}
+              onChange={(event) =>
+                updateValue("showInSchedule", event.target.checked)
+              }
+              className="mt-1 size-4 rounded border-cyan-300 text-cyan-700"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-slate-950">
+                Plaats in reisschema
+              </span>
+              <span className="mt-1 block text-sm leading-6 text-slate-600">
+                Toon deze activiteit straks in het reisschema.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        {values.showInSchedule ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="idea-schedule-date">Datum *</Label>
+              <Input
+                id="idea-schedule-date"
+                type="date"
+                value={values.scheduleDate}
+                onChange={(event) =>
+                  updateValue("scheduleDate", event.target.value)
+                }
+                aria-invalid={showScheduleDateError}
+              />
+              {showScheduleDateError ? (
+                <p className="text-sm font-medium text-pink-700">
+                  {errors.scheduleDate}
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="idea-start-time">Starttijd *</Label>
+              <Input
+                id="idea-start-time"
+                type="text"
+                inputMode="numeric"
+                pattern="^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                value={values.startTime}
+                onChange={(event) =>
+                  updateValue("startTime", sanitizeTimeInput(event.target.value))
+                }
+                onBlur={() =>
+                  updateValue("startTime", normalizeTimeInput(values.startTime))
+                }
+                placeholder="09:30"
+                aria-invalid={showStartTimeError}
+              />
+              {showStartTimeError ? (
+                <p className="text-sm font-medium text-pink-700">
+                  {errors.startTime}
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="idea-end-time">Eindtijd optioneel</Label>
+              <Input
+                id="idea-end-time"
+                type="text"
+                inputMode="numeric"
+                pattern="^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                value={values.endTime}
+                onChange={(event) =>
+                  updateValue("endTime", sanitizeTimeInput(event.target.value))
+                }
+                onBlur={() =>
+                  updateValue("endTime", normalizeTimeInput(values.endTime))
+                }
+                placeholder="11:00"
+                aria-invalid={showEndTimeError}
+              />
+              {showEndTimeError ? (
+                <p className="text-sm font-medium text-pink-700">
+                  {errors.endTime}
+                </p>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="idea-title">Titel *</Label>
           <Input
@@ -95,7 +239,7 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           />
           {showTitleError ? (
             <p id="idea-title-error" className="text-sm font-medium text-pink-700">
-              Vul een titel in om dit idee op te slaan.
+              {errors.title}
             </p>
           ) : null}
         </div>
@@ -133,9 +277,7 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           <Label htmlFor="idea-status">Status</Label>
           <Select
             value={values.status}
-            onValueChange={(value) =>
-              updateValue("status", value as IdeaStatus)
-            }
+            onValueChange={(value) => updateValue("status", value as IdeaStatus)}
           >
             <SelectTrigger id="idea-status" className="w-full">
               <SelectValue />
@@ -217,6 +359,18 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           />
         </div>
         <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="idea-customs">
+            Gewoontes / gebruiken / beleefdheden
+          </Label>
+          <Textarea
+            id="idea-customs"
+            value={values.customsNotes}
+            onChange={(event) => updateValue("customsNotes", event.target.value)}
+            placeholder="Bijvoorbeeld: schoenen uit, stil zijn, niet fotograferen, contant betalen..."
+            rows={3}
+          />
+        </div>
+        <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="idea-notes">Notities</Label>
           <Textarea
             id="idea-notes"
@@ -238,7 +392,7 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
         </Button>
         <Button
           type="submit"
-          disabled={!titleIsValid}
+          disabled={values.title.trim().length === 0}
           className="w-full bg-slate-950 text-white shadow-[0_0_20px_rgba(34,211,238,0.28)] hover:bg-slate-800 sm:w-auto"
         >
           Opslaan
@@ -246,4 +400,41 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
       </div>
     </form>
   );
+}
+
+function getValidationErrors(values: IdeaFormValues): IdeaFormErrors {
+  const errors: IdeaFormErrors = {};
+
+  if (values.title.trim().length === 0) {
+    errors.title = "Vul een titel in om dit idee op te slaan.";
+  }
+
+  if (values.showInSchedule) {
+    if (!values.scheduleDate) {
+      errors.scheduleDate = "Kies een datum voor het reisschema.";
+    }
+
+    if (!values.startTime) {
+      errors.startTime = "Kies een starttijd voor het reisschema.";
+    } else if (!isValidTime(values.startTime)) {
+      errors.startTime = "Gebruik 24-uurs formaat, bijvoorbeeld 09:30.";
+    }
+
+    if (values.endTime && !isValidTime(values.endTime)) {
+      errors.endTime = "Gebruik 24-uurs formaat, bijvoorbeeld 11:00.";
+    } else if (
+      values.endTime &&
+      values.startTime &&
+      isValidTime(values.startTime) &&
+      values.endTime < values.startTime
+    ) {
+      errors.endTime = "De eindtijd mag niet vóór de starttijd liggen.";
+    }
+  }
+
+  return errors;
+}
+
+function isValidTime(value: string) {
+  return /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(value);
 }
