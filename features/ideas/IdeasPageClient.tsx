@@ -204,7 +204,7 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
     <div className="space-y-6">
       <PageHeader
         title="Ideeën"
-        description={`Verzamel plekken, restaurants en praktische tips voor ${trip.name}.`}
+        description={`Verzamel plekken, restaurants en praktische tips voor ${trip.title}.`}
         backHref={`/trips/${trip.id}`}
         action={
           <Button

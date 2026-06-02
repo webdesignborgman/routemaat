@@ -1,10 +1,12 @@
 export type Trip = {
   id: string;
-  name: string;
+  title: string;
   destination: string;
-  startsAt: Date;
-  endsAt: Date;
-  summary: string;
-  memberCount: number;
-  ideaCount: number;
+  description?: string;
+  startDate: string;
+  endDate: string;
+  createdBy: string;
+  memberIds: string[];
+  createdAt: Date;
+  updatedAt: Date;
 };
