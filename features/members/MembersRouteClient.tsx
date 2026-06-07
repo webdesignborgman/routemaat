@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Mail, Trash2, UserPlus, Users } from "lucide-react";
+import { Mail, Shield, Trash2, UserPlus, Users } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,24 @@ type MembersRouteClientProps = {
 
 const inviteRoles: TripRole[] = ["viewer", "editor", "admin"];
 const allRoles: TripRole[] = ["owner", "admin", "editor", "viewer"];
+const roleDescriptions: Array<{ role: TripRole; description: string }> = [
+  {
+    role: "owner",
+    description: "Mag alles beheren, inclusief leden en rollen.",
+  },
+  {
+    role: "admin",
+    description: "Mag leden beheren en de reisinhoud bewerken.",
+  },
+  {
+    role: "editor",
+    description: "Mag ideeën en planning bewerken, maar geen leden beheren.",
+  },
+  {
+    role: "viewer",
+    description: "Kan alleen meekijken en niets aanpassen.",
+  },
+];
 
 export function MembersRouteClient({ tripId }: MembersRouteClientProps) {
   const { user } = useAuth();
@@ -293,6 +311,30 @@ export function MembersRouteClient({ tripId }: MembersRouteClientProps) {
         <RouteState title="Leden laden" description="We halen de leden op uit Firestore." />
       ) : (
         <>
+          <Card className="border-cyan-100 bg-white/95 shadow-[0_14px_35px_rgba(14,165,233,0.10)]">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Shield className="size-4 text-cyan-700" aria-hidden="true" />
+                Wat betekenen de rollen?
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              {roleDescriptions.map((roleDescription) => (
+                <div
+                  key={roleDescription.role}
+                  className="rounded-xl border border-cyan-100 bg-cyan-50/50 px-3 py-3"
+                >
+                  <Badge className="bg-white text-cyan-800 hover:bg-white">
+                    {tripRoleLabels[roleDescription.role]}
+                  </Badge>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    {roleDescription.description}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
           {canManage ? (
             <Card className="border-cyan-100 bg-white/95 shadow-[0_14px_35px_rgba(14,165,233,0.10)]">
               <CardHeader>
