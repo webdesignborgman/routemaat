@@ -31,8 +31,8 @@ import { cn } from "@/lib/utils";
 
 type IdeaCardProps = {
   idea: TripIdea;
-  onEdit: (idea: TripIdea) => void;
-  onDelete: (idea: TripIdea) => void;
+  onEdit?: (idea: TripIdea) => void;
+  onDelete?: (idea: TripIdea) => void;
 };
 
 const statusStyles: Record<IdeaStatus, string> = {
@@ -51,6 +51,7 @@ const priorityStyles: Record<IdeaPriority, string> = {
 
 export function IdeaCard({ idea, onEdit, onDelete }: IdeaCardProps) {
   const place = [idea.city, idea.locationName].filter(Boolean).join(" - ");
+  const hasActions = Boolean(onEdit || onDelete);
 
   return (
     <Card className="border-cyan-100 bg-white/95 shadow-[0_14px_35px_rgba(14,165,233,0.10)] transition-shadow hover:shadow-[0_18px_42px_rgba(236,72,153,0.12)]">
@@ -71,30 +72,36 @@ export function IdeaCard({ idea, onEdit, onDelete }: IdeaCardProps) {
               ) : null}
             </div>
           </div>
-          <div className="flex shrink-0 gap-1">
-            <Button
-              aria-label="Idee bewerken"
-              title="Idee bewerken"
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="text-slate-500 hover:text-cyan-700"
-              onClick={() => onEdit(idea)}
-            >
-              <Pencil className="size-4" aria-hidden="true" />
-            </Button>
-            <Button
-              aria-label="Idee verwijderen"
-              title="Idee verwijderen"
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="text-slate-500 hover:text-pink-700"
-              onClick={() => onDelete(idea)}
-            >
-              <Trash2 className="size-4" aria-hidden="true" />
-            </Button>
-          </div>
+          {hasActions ? (
+            <div className="flex shrink-0 gap-1">
+              {onEdit ? (
+                <Button
+                  aria-label="Idee bewerken"
+                  title="Idee bewerken"
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="text-slate-500 hover:text-cyan-700"
+                  onClick={() => onEdit(idea)}
+                >
+                  <Pencil className="size-4" aria-hidden="true" />
+                </Button>
+              ) : null}
+              {onDelete ? (
+                <Button
+                  aria-label="Idee verwijderen"
+                  title="Idee verwijderen"
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="text-slate-500 hover:text-pink-700"
+                  onClick={() => onDelete(idea)}
+                >
+                  <Trash2 className="size-4" aria-hidden="true" />
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

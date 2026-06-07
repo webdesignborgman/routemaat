@@ -7,7 +7,6 @@ import {
   query,
   serverTimestamp,
   Timestamp,
-  updateDoc,
   where,
   writeBatch,
   type DocumentData,
@@ -18,10 +17,10 @@ import {
 } from "firebase/firestore";
 
 import type { AuthUser } from "@/features/auth/authTypes";
+import type { TripMember } from "@/features/members/memberTypes";
 import type {
   CreateTripInput,
   Trip,
-  TripMember,
   TripRole,
   UpdateTripInput,
 } from "@/features/trips/tripTypes";
@@ -36,6 +35,11 @@ type FirestoreTripCreateData = {
   createdBy: string;
   createdAt: FieldValue;
   updatedAt: FieldValue;
+};
+
+type FirestoreTripMembershipSnapshotData = {
+  tripId: string;
+  role: TripRole;
 };
 
 type FirestoreTripUpdateData = {
@@ -53,6 +57,17 @@ type FirestoreTripMemberData = {
   email: string | null;
   photoURL: string | null;
   joinedAt: FieldValue;
+};
+
+type FirestoreTripMembershipData = {
+  tripId: string;
+  role: TripRole;
+  title: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  joinedAt: FieldValue;
+  updatedAt: FieldValue;
 };
 
 function getRequiredDb() {
@@ -75,12 +90,24 @@ function tripMemberDocRef(tripId: string, userId: string) {
   return doc(getRequiredDb(), "trips", tripId, "members", userId);
 }
 
+function tripMembershipDocRef(userId: string, tripId: string) {
+  return doc(getRequiredDb(), "users", userId, "tripMemberships", tripId);
+}
+
+function tripMembershipsCollectionRef(userId: string) {
+  return collection(getRequiredDb(), "users", userId, "tripMemberships");
+}
+
 function tripMembersCollectionRef(tripId: string) {
   return collection(getRequiredDb(), "trips", tripId, "members");
 }
 
 function tripIdeasCollectionRef(tripId: string) {
   return collection(getRequiredDb(), "trips", tripId, "ideas");
+}
+
+function tripInvitesCollectionRef(tripId: string) {
+  return collection(getRequiredDb(), "trips", tripId, "invites");
 }
 
 function slugifyTitle(title: string) {
@@ -145,8 +172,29 @@ function readDate(value: unknown) {
   return new Date();
 }
 
+function readStringArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === "string");
+}
+
 function isTripRole(value: string): value is TripRole {
   return ["owner", "admin", "editor", "viewer"].includes(value);
+}
+
+function mapMembershipSnapshotData(
+  snapshot: QueryDocumentSnapshot<DocumentData>
+): FirestoreTripMembershipSnapshotData {
+  const rawData: unknown = snapshot.data();
+  const data = isRecord(rawData) ? rawData : {};
+  const role = readString(data, "role");
+
+  return {
+    tripId: readString(data, "tripId") || snapshot.id,
+    role: isTripRole(role) ? role : "viewer",
+  };
 }
 
 export function mapTripDocToTrip(
@@ -155,6 +203,7 @@ export function mapTripDocToTrip(
   const rawData: unknown = snapshot.data();
   const data = isRecord(rawData) ? rawData : {};
   const createdBy = readString(data, "createdBy");
+  const memberIds = readStringArray(data.memberIds);
 
   return {
     id: snapshot.id,
@@ -164,7 +213,7 @@ export function mapTripDocToTrip(
     startDate: readString(data, "startDate"),
     endDate: readString(data, "endDate"),
     createdBy,
-    memberIds: createdBy ? [createdBy] : [],
+    memberIds: memberIds.length > 0 ? memberIds : createdBy ? [createdBy] : [],
     createdAt: readDate(data.createdAt),
     updatedAt: readDate(data.updatedAt),
   };
@@ -236,6 +285,22 @@ function mapOwnerMemberToFirestoreData(user: AuthUser): FirestoreTripMemberData 
   };
 }
 
+function mapOwnerMembershipToFirestoreData(
+  tripId: string,
+  input: CreateTripInput
+): FirestoreTripMembershipData {
+  return {
+    tripId,
+    role: "owner",
+    title: input.title,
+    destination: input.destination,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    joinedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+}
+
 export async function createTripForUser(
   input: CreateTripInput,
   user: AuthUser
@@ -243,8 +308,15 @@ export async function createTripForUser(
   const tripId = await createUniqueTripId(input.title);
   const batch = writeBatch(getRequiredDb());
 
-  batch.set(tripDocRef(tripId), mapCreateTripInputToFirestoreData(input, user));
+  batch.set(tripDocRef(tripId), {
+    ...mapCreateTripInputToFirestoreData(input, user),
+    memberIds: [user.uid],
+  });
   batch.set(tripMemberDocRef(tripId, user.uid), mapOwnerMemberToFirestoreData(user));
+  batch.set(
+    tripMembershipDocRef(user.uid, tripId),
+    mapOwnerMembershipToFirestoreData(tripId, input)
+  );
 
   await batch.commit();
 
@@ -252,13 +324,50 @@ export async function createTripForUser(
 }
 
 export async function listTripsForUser(userId: string): Promise<Trip[]> {
-  // Voor nu tonen we reizen die de gebruiker zelf heeft aangemaakt.
-  // Bij uitnodigingen wordt dit uitgebreid naar members-based toegang.
-  const tripsQuery = query(tripsCollectionRef(), where("createdBy", "==", userId));
-  const snapshot = await getDocs(tripsQuery);
+  const [membershipSnapshot, legacyTripsSnapshot] = await Promise.all([
+    getDocs(tripMembershipsCollectionRef(userId)),
+    getDocs(query(tripsCollectionRef(), where("createdBy", "==", userId))),
+  ]);
+  const indexedTrips: Array<Trip | null> = await Promise.all(
+    membershipSnapshot.docs.map(async (membershipDoc) => {
+      const membership = mapMembershipSnapshotData(membershipDoc);
+      const trip = await getTripById(membership.tripId);
 
-  return snapshot.docs
-    .map(mapTripDocToTrip)
+      return trip
+        ? {
+            ...trip,
+            currentUserRole: membership.role,
+            memberCount: await countTripMembers(trip.id, trip.memberIds.length),
+          }
+        : null;
+    })
+  );
+  const legacyTrips = await Promise.all(
+    legacyTripsSnapshot.docs.map(async (tripSnapshot) => {
+      const trip = mapTripDocToTrip(tripSnapshot);
+
+      return {
+        ...trip,
+        currentUserRole: "owner" as const,
+        memberCount: await countTripMembers(trip.id, trip.memberIds.length),
+      };
+    })
+  );
+  const tripsById = new Map<string, Trip>();
+
+  for (const trip of indexedTrips) {
+    if (trip) {
+      tripsById.set(trip.id, trip);
+    }
+  }
+
+  for (const trip of legacyTrips) {
+    if (!tripsById.has(trip.id)) {
+      tripsById.set(trip.id, trip);
+    }
+  }
+
+  return Array.from(tripsById.values())
     .sort((firstTrip, secondTrip) =>
       firstTrip.startDate.localeCompare(secondTrip.startDate)
     );
@@ -267,23 +376,67 @@ export async function listTripsForUser(userId: string): Promise<Trip[]> {
 export async function getTripById(tripId: string): Promise<Trip | null> {
   const snapshot = await getDoc(tripDocRef(tripId));
 
-  return snapshot.exists() ? mapTripDocToTrip(snapshot) : null;
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  const trip = mapTripDocToTrip(snapshot);
+
+  return {
+    ...trip,
+    memberCount: await countTripMembers(trip.id, trip.memberIds.length),
+  };
+}
+
+async function countTripMembers(tripId: string, fallbackCount: number) {
+  const membersSnapshot = await getDocs(tripMembersCollectionRef(tripId));
+
+  return Math.max(membersSnapshot.size, fallbackCount);
 }
 
 export async function updateTrip(
   tripId: string,
   input: UpdateTripInput
 ): Promise<void> {
-  await updateDoc(tripDocRef(tripId), mapUpdateTripInputToFirestoreData(input));
+  const batch = writeBatch(getRequiredDb());
+  const tripSnapshot = await getDoc(tripDocRef(tripId));
+  const membersSnapshot = await getDocs(tripMembersCollectionRef(tripId));
+
+  batch.update(tripDocRef(tripId), mapUpdateTripInputToFirestoreData(input));
+
+  for (const memberSnapshot of membersSnapshot.docs) {
+    const membershipUpdate: Partial<FirestoreTripMembershipData> & {
+      updatedAt: FieldValue;
+    } = {
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.destination !== undefined
+        ? { destination: input.destination }
+        : {}),
+      ...(input.startDate !== undefined ? { startDate: input.startDate } : {}),
+      ...(input.endDate !== undefined ? { endDate: input.endDate } : {}),
+      updatedAt: serverTimestamp(),
+    };
+
+    if (Object.keys(membershipUpdate).length > 1 || !tripSnapshot.exists()) {
+      batch.update(tripMembershipDocRef(memberSnapshot.id, tripId), membershipUpdate);
+    }
+  }
+
+  await batch.commit();
 }
 
 export async function deleteTrip(tripId: string): Promise<void> {
   const database = getRequiredDb();
   const membersSnapshot = await getDocs(tripMembersCollectionRef(tripId));
   const ideasSnapshot = await getDocs(tripIdeasCollectionRef(tripId));
+  const invitesSnapshot = await getDocs(tripInvitesCollectionRef(tripId));
   const refsToDelete: DocumentReference<DocumentData>[] = [
     ...membersSnapshot.docs.map((snapshot) => snapshot.ref),
+    ...membersSnapshot.docs.map((snapshot) =>
+      tripMembershipDocRef(snapshot.id, tripId)
+    ),
     ...ideasSnapshot.docs.map((snapshot) => snapshot.ref),
+    ...invitesSnapshot.docs.map((snapshot) => snapshot.ref),
     tripDocRef(tripId),
   ];
   const batchSize = 450;

@@ -14,6 +14,10 @@ import {
   signOutUser as signOutUserService,
 } from "@/features/auth/authService";
 import type { AuthContextValue, AuthUser } from "@/features/auth/authTypes";
+import {
+  acceptPendingInvitesForUser,
+  upsertUserProfile,
+} from "@/features/members/memberService";
 import { auth } from "@/lib/firebase";
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -34,6 +38,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
       setLoading(false);
+
+      if (nextUser) {
+        void upsertUserProfile(nextUser)
+          .then(() => acceptPendingInvitesForUser(nextUser))
+          .catch((error) => {
+            console.error("Gebruiker of uitnodigingen bijwerken mislukt", error);
+          });
+      }
     });
   }, []);
 

@@ -1,11 +1,10 @@
-export type TripRole = "owner" | "admin" | "editor" | "viewer";
+import type { TripRole as MemberTripRole } from "@/features/members/memberTypes";
 
-export const tripRoleLabels: Record<TripRole, string> = {
-  owner: "Eigenaar",
-  admin: "Beheerder",
-  editor: "Bewerker",
-  viewer: "Kijker",
-};
+export type {
+  TripMember,
+  TripRole,
+} from "@/features/members/memberTypes";
+export { tripRoleLabels } from "@/features/members/memberTypes";
 
 export type Trip = {
   id: string;
@@ -16,17 +15,10 @@ export type Trip = {
   endDate: string;
   createdBy: string;
   memberIds: string[];
+  memberCount?: number;
+  currentUserRole?: MemberTripRole;
   createdAt: Date;
   updatedAt: Date;
-};
-
-export type TripMember = {
-  userId: string;
-  role: TripRole;
-  displayName: string | null;
-  email: string | null;
-  photoURL: string | null;
-  joinedAt: Date;
 };
 
 export type CreateTripInput = {

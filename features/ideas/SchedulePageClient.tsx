@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/features/auth/useAuth";
 import { ideaCategoryLabels } from "@/features/ideas/ideaLabels";
 import { updateIdeaInputFromForm } from "@/features/ideas/ideaFormMapping";
 import {
@@ -36,6 +37,9 @@ import {
   updateIdeaForTrip,
 } from "@/features/ideas/ideaService";
 import type { IdeaFormValues, TripIdea } from "@/features/ideas/ideaTypes";
+import { canEditTripContent } from "@/features/members/memberPermissions";
+import { getTripMember } from "@/features/members/memberService";
+import type { TripMember } from "@/features/members/memberTypes";
 import { getTodayDateString } from "@/features/trips/tripDates";
 import type { Trip } from "@/features/trips/tripTypes";
 
@@ -44,12 +48,15 @@ type SchedulePageClientProps = {
 };
 
 export function SchedulePageClient({ trip }: SchedulePageClientProps) {
+  const { user } = useAuth();
   const [ideas, setIdeas] = useState<TripIdea[]>([]);
   const [editingIdea, setEditingIdea] = useState<TripIdea | undefined>();
+  const [currentMember, setCurrentMember] = useState<TripMember | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const todayDate = getTodayDateString();
+  const canEditSchedule = canEditTripContent(currentMember?.role);
 
   useEffect(() => {
     let isCancelled = false;
@@ -82,6 +89,37 @@ export function SchedulePageClient({ trip }: SchedulePageClientProps) {
     };
   }, [trip.id]);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadCurrentMember() {
+      if (!user) {
+        setCurrentMember(null);
+        return;
+      }
+
+      try {
+        const member = await getTripMember(trip.id, user.uid);
+
+        if (!isCancelled) {
+          setCurrentMember(member);
+        }
+      } catch (error) {
+        console.error("Reisrol laden mislukt", error);
+
+        if (!isCancelled) {
+          setCurrentMember(null);
+        }
+      }
+    }
+
+    void loadCurrentMember();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [trip.id, user]);
+
   async function refreshIdeas() {
     const loadedIdeas = await listIdeasForTrip(trip.id);
     setIdeas(loadedIdeas);
@@ -112,7 +150,7 @@ export function SchedulePageClient({ trip }: SchedulePageClientProps) {
   }
 
   async function handleSubmit(values: IdeaFormValues) {
-    if (!editingIdea) {
+    if (!editingIdea || !canEditSchedule) {
       return;
     }
 
@@ -229,7 +267,7 @@ export function SchedulePageClient({ trip }: SchedulePageClientProps) {
                           idea={idea}
                           tripId={trip.id}
                           isDisabled={isSaving}
-                          onEdit={setEditingIdea}
+                          onEdit={canEditSchedule ? setEditingIdea : undefined}
                         />
                       ))
                     ) : (
@@ -322,7 +360,7 @@ type ScheduleItemProps = {
   idea: TripIdea;
   tripId: string;
   isDisabled: boolean;
-  onEdit: (idea: TripIdea) => void;
+  onEdit?: (idea: TripIdea) => void;
 };
 
 function ScheduleItem({ idea, tripId, isDisabled, onEdit }: ScheduleItemProps) {
@@ -352,16 +390,18 @@ function ScheduleItem({ idea, tripId, isDisabled, onEdit }: ScheduleItemProps) {
             ) : null}
           </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full border-cyan-100 bg-white sm:w-auto"
-          disabled={isDisabled}
-          onClick={() => onEdit(idea)}
-        >
-          <Pencil className="size-4" aria-hidden="true" />
-          Bewerken
-        </Button>
+        {onEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-cyan-100 bg-white sm:w-auto"
+            disabled={isDisabled}
+            onClick={() => onEdit(idea)}
+          >
+            <Pencil className="size-4" aria-hidden="true" />
+            Bewerken
+          </Button>
+        ) : null}
       </div>
 
       <div className="mt-4 space-y-3">

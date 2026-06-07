@@ -18,6 +18,8 @@ type TripCardProps = {
 };
 
 export function TripCard({ trip, onDelete }: TripCardProps) {
+  const memberCount = trip.memberCount ?? trip.memberIds.length;
+
   return (
     <Card className="border-cyan-100 bg-white/95 shadow-[0_18px_45px_rgba(14,165,233,0.12)] transition-shadow hover:shadow-[0_20px_50px_rgba(236,72,153,0.12)]">
       <CardHeader>
@@ -55,7 +57,9 @@ export function TripCard({ trip, onDelete }: TripCardProps) {
           </div>
           <div className="flex items-center gap-2 rounded-lg bg-lime-50 px-3 py-2">
             <Users className="size-4 text-lime-600" aria-hidden="true" />
-            <span>{trip.memberIds.length} leden</span>
+            <span>
+              {memberCount} {memberCount === 1 ? "lid" : "leden"}
+            </span>
           </div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">

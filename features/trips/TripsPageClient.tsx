@@ -28,6 +28,7 @@ import {
   deleteTrip,
   listTripsForUser,
 } from "@/features/trips/tripService";
+import { canManageMembers } from "@/features/members/memberPermissions";
 import { TripCard } from "@/features/trips/TripCard";
 import type { Trip } from "@/features/trips/tripTypes";
 
@@ -513,7 +514,11 @@ function TripSection({
       {trips.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2">
           {trips.map((trip) => (
-            <TripCard key={trip.id} trip={trip} onDelete={onDelete} />
+            <TripCard
+              key={trip.id}
+              trip={trip}
+              onDelete={canManageMembers(trip.currentUserRole) ? onDelete : undefined}
+            />
           ))}
         </div>
       ) : (

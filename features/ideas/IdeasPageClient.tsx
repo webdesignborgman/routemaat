@@ -32,6 +32,9 @@ import type {
   IdeaFormValues,
   TripIdea,
 } from "@/features/ideas/ideaTypes";
+import { canEditTripContent } from "@/features/members/memberPermissions";
+import { getTripMember } from "@/features/members/memberService";
+import type { TripMember } from "@/features/members/memberTypes";
 import type { Trip } from "@/features/trips/tripTypes";
 
 type IdeasPageClientProps = {
@@ -95,12 +98,14 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingIdea, setEditingIdea] = useState<TripIdea | undefined>();
   const [ideaToDelete, setIdeaToDelete] = useState<TripIdea | null>(null);
+  const [currentMember, setCurrentMember] = useState<TripMember | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
   const [mutationErrorMessage, setMutationErrorMessage] = useState<string | null>(
     null
   );
+  const canEditIdeas = canEditTripContent(currentMember?.role);
 
   useEffect(() => {
     let isCancelled = false;
@@ -133,6 +138,37 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
     };
   }, [trip.id]);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadCurrentMember() {
+      if (!user) {
+        setCurrentMember(null);
+        return;
+      }
+
+      try {
+        const member = await getTripMember(trip.id, user.uid);
+
+        if (!isCancelled) {
+          setCurrentMember(member);
+        }
+      } catch (error) {
+        console.error("Reisrol laden mislukt", error);
+
+        if (!isCancelled) {
+          setCurrentMember(null);
+        }
+      }
+    }
+
+    void loadCurrentMember();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [trip.id, user]);
+
   async function refreshIdeas() {
     const loadedIdeas = await listIdeasForTrip(trip.id);
     setIdeas(loadedIdeas);
@@ -156,12 +192,22 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
     filters.tag !== "all";
 
   function openCreateDialog() {
+    if (!canEditIdeas) {
+      setMutationErrorMessage("Je hebt alleen kijkrechten voor deze reis.");
+      return;
+    }
+
     setEditingIdea(undefined);
     setMutationErrorMessage(null);
     setDialogMode("create");
   }
 
   function openEditDialog(idea: TripIdea) {
+    if (!canEditIdeas) {
+      setMutationErrorMessage("Je hebt alleen kijkrechten voor deze reis.");
+      return;
+    }
+
     setEditingIdea(idea);
     setMutationErrorMessage(null);
     setDialogMode("edit");
@@ -174,6 +220,11 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
   }
 
   async function handleSubmit(values: IdeaFormValues) {
+    if (!canEditIdeas) {
+      setMutationErrorMessage("Je hebt alleen kijkrechten voor deze reis.");
+      return;
+    }
+
     if (!user) {
       setMutationErrorMessage("Log opnieuw in om dit idee op te slaan.");
       return;
@@ -208,12 +259,17 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
   }
 
   function handleDelete(idea: TripIdea) {
+    if (!canEditIdeas) {
+      setMutationErrorMessage("Je hebt alleen kijkrechten voor deze reis.");
+      return;
+    }
+
     setMutationErrorMessage(null);
     setIdeaToDelete(idea);
   }
 
   async function confirmDelete() {
-    if (!ideaToDelete) {
+    if (!ideaToDelete || !canEditIdeas) {
       return;
     }
 
@@ -247,6 +303,7 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
         description={`Verzamel plekken, restaurants, activiteiten en praktische tips voor ${trip.title}.`}
         backHref={`/trips/${trip.id}`}
         action={
+          canEditIdeas ? (
           <Button
             type="button"
             onClick={openCreateDialog}
@@ -256,6 +313,7 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
             <Plus className="size-4" aria-hidden="true" />
             Idee / activiteit toevoegen
           </Button>
+          ) : undefined
         }
       />
 
@@ -288,9 +346,13 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
           {ideas.length === 0 ? (
             <EmptyState
               title="Geen items gevonden"
-              description="Voeg het eerste idee of de eerste activiteit toe voor deze reis."
-              actionLabel="Idee / activiteit toevoegen"
-              onAction={openCreateDialog}
+              description={
+                canEditIdeas
+                  ? "Voeg het eerste idee of de eerste activiteit toe voor deze reis."
+                  : "Er zijn nog geen ideeën of activiteiten voor deze reis."
+              }
+              actionLabel={canEditIdeas ? "Idee / activiteit toevoegen" : undefined}
+              onAction={canEditIdeas ? openCreateDialog : undefined}
             />
           ) : filteredIdeas.length === 0 ? (
             <EmptyState
@@ -307,8 +369,8 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
                 <IdeaCard
                   key={idea.id}
                   idea={idea}
-                  onEdit={openEditDialog}
-                  onDelete={handleDelete}
+                  onEdit={canEditIdeas ? openEditDialog : undefined}
+                  onDelete={canEditIdeas ? handleDelete : undefined}
                 />
               ))}
             </div>

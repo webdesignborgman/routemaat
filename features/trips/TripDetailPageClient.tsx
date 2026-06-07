@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   CalendarClock,
@@ -34,6 +34,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/features/auth/useAuth";
+import { canEditTripContent } from "@/features/members/memberPermissions";
+import { getTripMember } from "@/features/members/memberService";
+import type { TripMember } from "@/features/members/memberTypes";
 import {
   formatTripPeriod,
   getTripDayCount,
@@ -71,7 +75,9 @@ const statusBadgeClasses: Record<TripStatus, string> = {
 };
 
 export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
+  const { user } = useAuth();
   const { trip, isLoading, errorMessage } = useTripLookup(tripId);
+  const [currentMember, setCurrentMember] = useState<TripMember | null>(null);
   const [editedTrip, setEditedTrip] = useState<Trip | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -83,6 +89,38 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
   const [endDate, setEndDate] = useState("");
   const [errors, setErrors] = useState<TripFormErrors>({});
   const currentTrip = editedTrip ?? trip;
+  const canEditTrip = canEditTripContent(currentMember?.role);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadCurrentMember() {
+      if (!user || !trip) {
+        setCurrentMember(null);
+        return;
+      }
+
+      try {
+        const member = await getTripMember(trip.id, user.uid);
+
+        if (!isCancelled) {
+          setCurrentMember(member);
+        }
+      } catch (error) {
+        console.error("Reisrol laden mislukt", error);
+
+        if (!isCancelled) {
+          setCurrentMember(null);
+        }
+      }
+    }
+
+    void loadCurrentMember();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [trip, user]);
 
   const quickActions = useMemo<QuickAction[]>(
     () => [
@@ -115,8 +153,9 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
       },
       {
         title: "Leden",
-        description: "Binnenkort beschikbaar.",
+        description: "Beheer wie mee kan kijken en plannen.",
         icon: Users,
+        href: currentTrip ? `/trips/${currentTrip.id}/members` : undefined,
         accentClassName: "bg-slate-100 text-slate-700",
       },
     ],
@@ -148,6 +187,7 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
   const activeTrip = currentTrip;
   const status = getTripStatus(activeTrip);
   const dayCount = getTripDayCount(activeTrip);
+  const memberCount = activeTrip.memberCount ?? activeTrip.memberIds.length;
 
   function openEditDialog() {
     setTitle(activeTrip.title);
@@ -235,15 +275,17 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         backHref="/trips"
         action={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full border-cyan-100 bg-white sm:w-auto"
-              onClick={openEditDialog}
-            >
-              <Pencil className="size-4" aria-hidden="true" />
-              Reis bewerken
-            </Button>
+            {canEditTrip ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-cyan-100 bg-white sm:w-auto"
+                onClick={openEditDialog}
+              >
+                <Pencil className="size-4" aria-hidden="true" />
+                Reis bewerken
+              </Button>
+            ) : null}
             <Button
               asChild
               className="w-full bg-slate-950 text-white shadow-[0_0_24px_rgba(236,72,153,0.24)] hover:bg-slate-800 sm:w-auto"
@@ -296,9 +338,7 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         />
         <InfoCard
           title="Groep"
-          value={`${activeTrip.memberIds.length} ${
-            activeTrip.memberIds.length === 1 ? "lid" : "leden"
-          }`}
+          value={`${memberCount} ${memberCount === 1 ? "lid" : "leden"}`}
           icon={Users}
           iconClassName="text-lime-600"
         />
