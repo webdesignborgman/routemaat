@@ -13,8 +13,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DEMO_USER_ID } from "@/features/auth/authConstants";
+import { useAuth } from "@/features/auth/useAuth";
 import { IdeaCard } from "@/features/ideas/IdeaCard";
 import { loadTripIdeas, saveTripIdeas } from "@/features/ideas/ideaClientStorage";
+import {
+  createIdeaFromForm,
+  updateIdeaFromForm,
+} from "@/features/ideas/ideaFormMapping";
 import { IdeaFilters } from "@/features/ideas/IdeaFilters";
 import { IdeaForm } from "@/features/ideas/IdeaForm";
 import type {
@@ -38,20 +44,6 @@ const defaultFilters: IdeaFiltersType = {
 
 function normalizeSearchValue(value: string) {
   return value.trim().toLocaleLowerCase("nl-NL");
-}
-
-function parseTags(tagsText: string) {
-  const tags = tagsText
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0);
-
-  return Array.from(new Map(tags.map((tag) => [tag.toLocaleLowerCase("nl-NL"), tag])).values());
-}
-
-function optionalText(value: string) {
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function matchesFilters(idea: TripIdea, filters: IdeaFiltersType) {
@@ -90,62 +82,8 @@ function matchesFilters(idea: TripIdea, filters: IdeaFiltersType) {
   );
 }
 
-function createIdea(values: IdeaFormValues, tripId: string): TripIdea {
-  const now = new Date();
-
-  return {
-    id: crypto.randomUUID(),
-    tripId,
-    title: values.title.trim(),
-    description: values.description.trim(),
-    category: values.category,
-    tags: parseTags(values.tagsText),
-    city: optionalText(values.city),
-    locationName: optionalText(values.locationName),
-    googleMapsUrl: optionalText(values.googleMapsUrl),
-    websiteUrl: optionalText(values.websiteUrl),
-    notes: optionalText(values.notes),
-    customsNotes: optionalText(values.customsNotes),
-    showInSchedule: values.showInSchedule,
-    scheduleDate: values.showInSchedule
-      ? optionalText(values.scheduleDate)
-      : undefined,
-    startTime: values.showInSchedule ? optionalText(values.startTime) : undefined,
-    endTime: values.showInSchedule ? optionalText(values.endTime) : undefined,
-    status: values.status,
-    priority: values.priority,
-    addedBy: "mock-user",
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-function updateIdea(idea: TripIdea, values: IdeaFormValues): TripIdea {
-  return {
-    ...idea,
-    title: values.title.trim(),
-    description: values.description.trim(),
-    category: values.category,
-    tags: parseTags(values.tagsText),
-    city: optionalText(values.city),
-    locationName: optionalText(values.locationName),
-    googleMapsUrl: optionalText(values.googleMapsUrl),
-    websiteUrl: optionalText(values.websiteUrl),
-    notes: optionalText(values.notes),
-    customsNotes: optionalText(values.customsNotes),
-    showInSchedule: values.showInSchedule,
-    scheduleDate: values.showInSchedule
-      ? optionalText(values.scheduleDate)
-      : undefined,
-    startTime: values.showInSchedule ? optionalText(values.startTime) : undefined,
-    endTime: values.showInSchedule ? optionalText(values.endTime) : undefined,
-    status: values.status,
-    priority: values.priority,
-    updatedAt: new Date(),
-  };
-}
-
 export function IdeasPageClient({ trip }: IdeasPageClientProps) {
+  const { user } = useAuth();
   const [ideas, setIdeas] = useState<TripIdea[]>(() => loadTripIdeas(trip.id));
   const [filters, setFilters] = useState<IdeaFiltersType>(defaultFilters);
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
@@ -196,14 +134,17 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
     if (dialogMode === "edit" && editingIdea) {
       setIdeas((currentIdeas) => {
         const nextIdeas = currentIdeas.map((idea) =>
-          idea.id === editingIdea.id ? updateIdea(idea, values) : idea
+          idea.id === editingIdea.id ? updateIdeaFromForm(idea, values) : idea
         );
         saveTripIdeas(trip.id, nextIdeas);
         return nextIdeas;
       });
     } else {
       setIdeas((currentIdeas) => {
-        const nextIdeas = [createIdea(values, trip.id), ...currentIdeas];
+        const nextIdeas = [
+          createIdeaFromForm(values, trip.id, user?.uid ?? DEMO_USER_ID),
+          ...currentIdeas,
+        ];
         saveTripIdeas(trip.id, nextIdeas);
         return nextIdeas;
       });
@@ -254,13 +195,13 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
 
       {ideas.length > 0 ? (
         <div className="rounded-xl border border-cyan-100 bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_24px_rgba(14,165,233,0.06)]">
-          {filteredIdeas.length} van {ideas.length} ideeën / activiteiten zichtbaar
+          {filteredIdeas.length} van {ideas.length} items zichtbaar in Ideeën / Activiteiten
         </div>
       ) : null}
 
       {ideas.length === 0 ? (
         <EmptyState
-          title="Geen ideeën / activiteiten gevonden"
+          title="Geen items gevonden"
           description="Voeg het eerste idee of de eerste activiteit toe voor deze reis."
           actionLabel="Idee / activiteit toevoegen"
           onAction={openCreateDialog}
@@ -268,7 +209,7 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
       ) : filteredIdeas.length === 0 ? (
         <EmptyState
           title="Geen resultaten"
-          description="Pas je zoekterm of filters aan om weer ideeën en activiteiten te zien."
+          description="Pas je zoekterm of filters aan om weer items in Ideeën / Activiteiten te zien."
           actionLabel={hasActiveFilters ? "Filters wissen" : undefined}
           onAction={hasActiveFilters ? () => setFilters(defaultFilters) : undefined}
         />

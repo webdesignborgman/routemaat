@@ -1,21 +1,17 @@
 import type { TripIdea } from "@/features/ideas/ideaTypes";
 import type { Trip } from "@/features/trips/tripTypes";
+import {
+  addDays,
+  dateStringToLocalDate,
+  dateToDateString,
+  formatDutchDate,
+} from "@/lib/dateUtils";
 
-const dateFormatter = new Intl.DateTimeFormat("nl-NL", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
-function dateStringToLocalDate(dateString: string) {
-  const [year, month, day] = dateString.split("-").map(Number);
-
-  if (!year || !month || !day) {
-    return new Date(dateString);
-  }
-
-  return new Date(year, month - 1, day);
-}
+export type TripScheduleDay = {
+  date: string;
+  dayNumber: number;
+  ideas: TripIdea[];
+};
 
 function normalizeTime(time: string) {
   const [hours = "", minutes = ""] = time.split(":");
@@ -23,7 +19,7 @@ function normalizeTime(time: string) {
 }
 
 export function formatScheduleDate(dateString: string) {
-  return dateFormatter.format(dateStringToLocalDate(dateString));
+  return formatDutchDate(dateString);
 }
 
 export function formatScheduleTime(idea: TripIdea) {
@@ -97,6 +93,44 @@ export function groupScheduledIdeasByDate(ideas: TripIdea[]) {
       date,
       ideas: scheduledIdeas,
     }));
+}
+
+export function getTripScheduleDays(
+  trip: Trip,
+  ideas: TripIdea[]
+): TripScheduleDay[] {
+  const scheduledIdeasByDate = new Map<string, TripIdea[]>();
+
+  for (const idea of getScheduledIdeas(ideas)) {
+    if (!idea.scheduleDate) {
+      continue;
+    }
+
+    scheduledIdeasByDate.set(idea.scheduleDate, [
+      ...(scheduledIdeasByDate.get(idea.scheduleDate) ?? []),
+      idea,
+    ]);
+  }
+
+  const startDate = dateStringToLocalDate(trip.startDate);
+  const endDate = dateStringToLocalDate(trip.endDate);
+  const days: TripScheduleDay[] = [];
+
+  for (
+    let currentDate = startDate;
+    currentDate.getTime() <= endDate.getTime();
+    currentDate = addDays(currentDate, 1)
+  ) {
+    const date = dateToDateString(currentDate);
+
+    days.push({
+      date,
+      dayNumber: getTripDayNumber(trip, date),
+      ideas: scheduledIdeasByDate.get(date) ?? [],
+    });
+  }
+
+  return days;
 }
 
 export function getTripDayNumber(trip: Trip, dateString: string) {

@@ -1,4 +1,5 @@
 import { mockPhrases } from "@/features/language/languageMockData";
+import { phraseCategories } from "@/features/language/languageLabels";
 import type {
   PhraseCategory,
   TravelPhrase,
@@ -7,18 +8,6 @@ import type {
 const STORAGE_KEY = "routemaat.mockPhrases.v1";
 const DELETED_STORAGE_KEY = "routemaat.deletedMockPhrases.v1";
 const emptyPhrases: TravelPhrase[] = [];
-
-const phraseCategories: PhraseCategory[] = [
-  "general",
-  "restaurant",
-  "hotel",
-  "transport",
-  "temple",
-  "onsen",
-  "shop",
-  "emergency",
-  "custom",
-];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;

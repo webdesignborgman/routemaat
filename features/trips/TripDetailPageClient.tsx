@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import {
   CalendarDays,
   CalendarClock,
@@ -9,6 +9,7 @@ import {
   Languages,
   Lightbulb,
   MapPin,
+  Pencil,
   Route,
   Users,
 } from "lucide-react";
@@ -22,7 +23,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { loadStoredTrips } from "@/features/trips/tripClientStorage";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { upsertStoredTrip } from "@/features/trips/tripClientStorage";
 import {
   formatTripPeriod,
   getTripDayCount,
@@ -30,8 +42,8 @@ import {
   getTripStatusLabel,
   type TripStatus,
 } from "@/features/trips/tripDates";
-import { getTripById } from "@/features/trips/tripMockData";
 import type { Trip } from "@/features/trips/tripTypes";
+import { useTripLookup } from "@/features/trips/useTripLookup";
 
 type TripDetailPageClientProps = {
   tripId: string;
@@ -45,6 +57,13 @@ type QuickAction = {
   accentClassName: string;
 };
 
+type TripFormErrors = {
+  title?: string;
+  destination?: string;
+  startDate?: string;
+  endDate?: string;
+};
+
 const statusBadgeClasses: Record<TripStatus, string> = {
   upcoming: "border-cyan-200 bg-cyan-50 text-cyan-700",
   ongoing: "border-lime-200 bg-lime-50 text-lime-700",
@@ -52,25 +71,16 @@ const statusBadgeClasses: Record<TripStatus, string> = {
 };
 
 export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
-  const mockTrip = getTripById(tripId) ?? null;
-  const [storedTrip, setStoredTrip] = useState<Trip | null>(null);
-  const [hasCheckedStoredTrips, setHasCheckedStoredTrips] = useState(
-    Boolean(mockTrip)
-  );
-  const trip = mockTrip ?? storedTrip;
-
-  useEffect(() => {
-    if (mockTrip) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setStoredTrip(loadStoredTrips().find((trip) => trip.id === tripId) ?? null);
-      setHasCheckedStoredTrips(true);
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [mockTrip, tripId]);
+  const { trip, isLoading } = useTripLookup(tripId);
+  const [editedTrip, setEditedTrip] = useState<Trip | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [destination, setDestination] = useState("");
+  const [description, setDescription] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [errors, setErrors] = useState<TripFormErrors>({});
+  const currentTrip = editedTrip ?? trip;
 
   const quickActions = useMemo<QuickAction[]>(
     () => [
@@ -78,21 +88,21 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         title: "Reisschema",
         description: "Bekijk geplande activiteiten per dag.",
         icon: CalendarClock,
-        href: trip ? `/trips/${trip.id}/schedule` : undefined,
+        href: currentTrip ? `/trips/${currentTrip.id}/schedule` : undefined,
         accentClassName: "bg-pink-50 text-pink-600",
       },
       {
         title: "Ideeën / Activiteiten",
         description: "Plekken, activiteiten, links en notities.",
         icon: Lightbulb,
-        href: trip ? `/trips/${trip.id}/ideas` : undefined,
+        href: currentTrip ? `/trips/${currentTrip.id}/ideas` : undefined,
         accentClassName: "bg-cyan-50 text-cyan-700",
       },
       {
         title: "Taal",
         description: "Bewaar handige zinnen voor onderweg.",
         icon: Languages,
-        href: trip ? `/trips/${trip.id}/language` : undefined,
+        href: currentTrip ? `/trips/${currentTrip.id}/language` : undefined,
         accentClassName: "bg-lime-50 text-lime-700",
       },
       {
@@ -108,10 +118,10 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         accentClassName: "bg-slate-100 text-slate-700",
       },
     ],
-    [trip]
+    [currentTrip]
   );
 
-  if (!trip && !hasCheckedStoredTrips) {
+  if (isLoading) {
     return (
       <section className="rounded-xl border border-cyan-100 bg-white/85 px-5 py-12 text-center shadow-[0_18px_45px_rgba(14,165,233,0.10)]">
         <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">
@@ -125,48 +135,118 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
     );
   }
 
-  if (!trip) {
+  if (!currentTrip) {
     return <TripNotFoundState />;
   }
 
-  const status = getTripStatus(trip);
-  const dayCount = getTripDayCount(trip);
+  const activeTrip = currentTrip;
+  const status = getTripStatus(activeTrip);
+  const dayCount = getTripDayCount(activeTrip);
+
+  function openEditDialog() {
+    setTitle(activeTrip.title);
+    setDestination(activeTrip.destination);
+    setDescription(activeTrip.description ?? "");
+    setStartDate(activeTrip.startDate);
+    setEndDate(activeTrip.endDate);
+    setErrors({});
+    setIsEditDialogOpen(true);
+  }
+
+  function closeEditDialog() {
+    setIsEditDialogOpen(false);
+    setErrors({});
+  }
+
+  function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedTitle = title.trim();
+    const trimmedDestination = destination.trim();
+    const nextErrors: TripFormErrors = {};
+
+    if (!trimmedTitle) {
+      nextErrors.title = "Vul een titel in voor je reis.";
+    }
+
+    if (!trimmedDestination) {
+      nextErrors.destination = "Vul een bestemming in.";
+    }
+
+    if (!startDate) {
+      nextErrors.startDate = "Kies een startdatum.";
+    }
+
+    if (!endDate) {
+      nextErrors.endDate = "Kies een einddatum.";
+    } else if (startDate && endDate < startDate) {
+      nextErrors.endDate = "De einddatum mag niet vóór de startdatum liggen.";
+    }
+
+    setErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+
+    const updatedTrip: Trip = {
+      ...activeTrip,
+      title: trimmedTitle,
+      destination: trimmedDestination,
+      description: description.trim() || undefined,
+      startDate,
+      endDate,
+      updatedAt: new Date(),
+    };
+
+    upsertStoredTrip(updatedTrip);
+    setEditedTrip(updatedTrip);
+    closeEditDialog();
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={trip.title}
-        description={trip.description}
+        title={activeTrip.title}
+        description={activeTrip.description}
         backHref="/trips"
         action={
-          <Button
-            asChild
-            className="w-full bg-slate-950 text-white shadow-[0_0_24px_rgba(236,72,153,0.24)] hover:bg-slate-800 sm:w-auto"
-          >
-            <Link href={`/trips/${trip.id}/ideas`}>
-              <Lightbulb className="size-4" aria-hidden="true" />
-              Naar ideeën / activiteiten
-            </Link>
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-cyan-100 bg-white sm:w-auto"
+              onClick={openEditDialog}
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+              Reis bewerken
+            </Button>
+            <Button
+              asChild
+              className="w-full bg-slate-950 text-white shadow-[0_0_24px_rgba(236,72,153,0.24)] hover:bg-slate-800 sm:w-auto"
+            >
+              <Link href={`/trips/${activeTrip.id}/ideas`}>
+                <Lightbulb className="size-4" aria-hidden="true" />
+                Naar Ideeën / Activiteiten
+              </Link>
+            </Button>
+          </div>
         }
       />
 
       <section className="rounded-xl border border-cyan-100 bg-white/95 p-4 shadow-[0_18px_45px_rgba(14,165,233,0.10)] sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-3">
-            <Badge
-              variant="outline"
-              className={statusBadgeClasses[status]}
-            >
+            <Badge variant="outline" className={statusBadgeClasses[status]}>
               {getTripStatusLabel(status)}
             </Badge>
             <div>
               <h2 className="text-xl font-semibold text-slate-950">
                 Reisoverzicht
               </h2>
-              {trip.description ? (
+              {activeTrip.description ? (
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                  {trip.description}
+                  {activeTrip.description}
                 </p>
               ) : null}
             </div>
@@ -181,20 +261,20 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
       <div className="grid gap-4 md:grid-cols-3">
         <InfoCard
           title="Bestemming"
-          value={trip.destination}
+          value={activeTrip.destination}
           icon={MapPin}
           iconClassName="text-pink-500"
         />
         <InfoCard
           title="Periode"
-          value={formatTripPeriod(trip)}
+          value={formatTripPeriod(activeTrip)}
           icon={CalendarDays}
           iconClassName="text-cyan-600"
         />
         <InfoCard
           title="Groep"
-          value={`${trip.memberIds.length} ${
-            trip.memberIds.length === 1 ? "lid" : "leden"
+          value={`${activeTrip.memberIds.length} ${
+            activeTrip.memberIds.length === 1 ? "lid" : "leden"
           }`}
           icon={Users}
           iconClassName="text-lime-600"
@@ -215,6 +295,148 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
           ))}
         </div>
       </section>
+
+      <Dialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => !open && closeEditDialog()}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto border-cyan-100 bg-white shadow-[0_22px_70px_rgba(14,165,233,0.18)] sm:max-w-xl">
+          <DialogHeader>
+            <div className="mb-1 flex size-10 items-center justify-center rounded-full bg-cyan-50 text-cyan-700 shadow-[0_0_22px_rgba(34,211,238,0.18)]">
+              <Pencil className="size-5" aria-hidden="true" />
+            </div>
+            <DialogTitle>Reis bewerken</DialogTitle>
+            <DialogDescription>
+              Pas de basisgegevens van deze reis aan. De reis-id blijft hetzelfde.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className="space-y-4" noValidate onSubmit={handleEditSubmit}>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-trip-title">Titel</Label>
+              <Input
+                id="edit-trip-title"
+                value={title}
+                onChange={(event) => {
+                  setTitle(event.target.value);
+                  setErrors((currentErrors) => ({
+                    ...currentErrors,
+                    title: undefined,
+                  }));
+                }}
+                required
+                aria-invalid={Boolean(errors.title)}
+              />
+              {errors.title ? (
+                <p className="text-sm font-medium text-pink-700">
+                  {errors.title}
+                </p>
+              ) : null}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-trip-destination">Bestemming</Label>
+              <Input
+                id="edit-trip-destination"
+                value={destination}
+                onChange={(event) => {
+                  setDestination(event.target.value);
+                  setErrors((currentErrors) => ({
+                    ...currentErrors,
+                    destination: undefined,
+                  }));
+                }}
+                required
+                aria-invalid={Boolean(errors.destination)}
+              />
+              {errors.destination ? (
+                <p className="text-sm font-medium text-pink-700">
+                  {errors.destination}
+                </p>
+              ) : null}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-trip-start-date">Startdatum</Label>
+                <Input
+                  id="edit-trip-start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => {
+                    const nextStartDate = event.target.value;
+                    setStartDate(nextStartDate);
+                    setErrors((currentErrors) => ({
+                      ...currentErrors,
+                      startDate: undefined,
+                      endDate:
+                        endDate && nextStartDate && endDate < nextStartDate
+                          ? undefined
+                          : currentErrors.endDate,
+                    }));
+
+                    if (endDate && nextStartDate && endDate < nextStartDate) {
+                      setEndDate(nextStartDate);
+                    }
+                  }}
+                  required
+                  aria-invalid={Boolean(errors.startDate)}
+                />
+                {errors.startDate ? (
+                  <p className="text-sm font-medium text-pink-700">
+                    {errors.startDate}
+                  </p>
+                ) : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-trip-end-date">Einddatum</Label>
+                <Input
+                  id="edit-trip-end-date"
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  onChange={(event) => {
+                    setEndDate(event.target.value);
+                    setErrors((currentErrors) => ({
+                      ...currentErrors,
+                      endDate: undefined,
+                    }));
+                  }}
+                  required
+                  aria-invalid={Boolean(errors.endDate)}
+                />
+                {errors.endDate ? (
+                  <p className="text-sm font-medium text-pink-700">
+                    {errors.endDate}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-trip-description">Korte omschrijving</Label>
+              <Textarea
+                id="edit-trip-description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={closeEditDialog}
+              >
+                Annuleren
+              </Button>
+              <Button
+                type="submit"
+                className="w-full bg-slate-950 text-white hover:bg-slate-800 sm:w-auto"
+              >
+                Opslaan
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -261,7 +483,10 @@ function QuickActionCard({ action }: QuickActionCardProps) {
             {action.title}
           </h3>
           {!action.href ? (
-            <Badge variant="outline" className="border-pink-100 bg-pink-50 text-pink-700">
+            <Badge
+              variant="outline"
+              className="border-pink-100 bg-pink-50 text-pink-700"
+            >
               Binnenkort
             </Badge>
           ) : null}

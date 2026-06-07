@@ -1,38 +1,20 @@
 import type { Trip } from "@/features/trips/tripTypes";
+import {
+  dateStringToLocalDate,
+  dateToDateString,
+  formatDutchDate,
+} from "@/lib/dateUtils";
 
 export type TripStatus = "upcoming" | "past" | "ongoing";
 
-const dateFormatter = new Intl.DateTimeFormat("nl-NL", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
-function dateStringToLocalDate(dateString: string) {
-  const [year, month, day] = dateString.split("-").map(Number);
-
-  if (!year || !month || !day) {
-    return new Date(dateString);
-  }
-
-  return new Date(year, month - 1, day);
-}
-
-export function formatTripDate(dateString: string) {
-  return dateFormatter.format(dateStringToLocalDate(dateString));
-}
+export const formatTripDate = formatDutchDate;
 
 export function formatTripPeriod(trip: Trip) {
   return `${formatTripDate(trip.startDate)} - ${formatTripDate(trip.endDate)}`;
 }
 
 export function getTodayDateString() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  return dateToDateString(new Date());
 }
 
 export function isUpcomingTrip(trip: Trip, today = getTodayDateString()) {

@@ -1,3 +1,4 @@
+import { DEMO_USER_ID } from "@/features/auth/authConstants";
 import type { Trip } from "@/features/trips/tripTypes";
 
 export const mockTrips: Trip[] = [
@@ -9,8 +10,8 @@ export const mockTrips: Trip[] = [
       "Een rustige familieplanning met ruimte voor tempels, foodspots, wijken, winkels en praktische tips.",
     startDate: "2028-04-18",
     endDate: "2028-05-04",
-    createdBy: "demo-user",
-    memberIds: ["demo-user"],
+    createdBy: DEMO_USER_ID,
+    memberIds: [DEMO_USER_ID],
     createdAt: new Date("2026-05-20T10:00:00.000Z"),
     updatedAt: new Date("2026-05-20T10:00:00.000Z"),
   },
@@ -22,8 +23,8 @@ export const mockTrips: Trip[] = [
       "Een kort familie-uitje met wandelingen, marktjes en rustige avonden samen.",
     startDate: "2025-10-17",
     endDate: "2025-10-20",
-    createdBy: "demo-user",
-    memberIds: ["demo-user"],
+    createdBy: DEMO_USER_ID,
+    memberIds: [DEMO_USER_ID],
     createdAt: new Date("2025-08-01T12:00:00.000Z"),
     updatedAt: new Date("2025-08-01T12:00:00.000Z"),
   },

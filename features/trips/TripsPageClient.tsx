@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DEMO_USER_ID } from "@/features/auth/authConstants";
 import { useAuth } from "@/features/auth/useAuth";
 import {
   loadStoredTrips,
@@ -32,8 +33,6 @@ import { mockTrips } from "@/features/trips/tripMockData";
 import { createUniqueTripId } from "@/features/trips/tripSlugs";
 import { TripCard } from "@/features/trips/TripCard";
 import type { Trip } from "@/features/trips/tripTypes";
-
-const demoUserId = "demo-user";
 
 type TripFormErrors = {
   title?: string;
@@ -140,8 +139,8 @@ export function TripsPageClient() {
       description: description.trim() || undefined,
       startDate,
       endDate,
-      createdBy: user?.uid ?? demoUserId,
-      memberIds: [user?.uid ?? demoUserId],
+      createdBy: user?.uid ?? DEMO_USER_ID,
+      memberIds: [user?.uid ?? DEMO_USER_ID],
       createdAt: now,
       updatedAt: now,
     };

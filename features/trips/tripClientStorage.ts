@@ -117,6 +117,24 @@ export function saveStoredTrips(trips: Trip[]) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
 }
 
+export function upsertStoredTrip(trip: Trip) {
+  const storedTrips = loadStoredTrips();
+  const existingTripIndex = storedTrips.findIndex(
+    (storedTrip) => storedTrip.id === trip.id
+  );
+
+  if (existingTripIndex === -1) {
+    saveStoredTrips([trip, ...storedTrips]);
+    return;
+  }
+
+  saveStoredTrips(
+    storedTrips.map((storedTrip) =>
+      storedTrip.id === trip.id ? trip : storedTrip
+    )
+  );
+}
+
 export function mergeTrips(baseTrips: Trip[], storedTrips: Trip[]) {
   const tripsById = new Map<string, Trip>();
 

@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DEMO_USER_ID } from "@/features/auth/authConstants";
 import { useAuth } from "@/features/auth/useAuth";
 import {
   loadTripPhrases,
@@ -43,8 +44,6 @@ const defaultFilters: PhraseFiltersType = {
   category: "all",
   favoriteOnly: false,
 };
-
-const demoUserId = "demo-user";
 
 type PhraseGroup = {
   category: PhraseCategory;
@@ -220,7 +219,7 @@ export function LanguagePageClient({ trip }: LanguagePageClientProps) {
     } else {
       setPhrases((currentPhrases) => {
         const nextPhrases = [
-          createPhrase(values, trip.id, user?.uid ?? demoUserId),
+          createPhrase(values, trip.id, user?.uid ?? DEMO_USER_ID),
           ...currentPhrases,
         ];
         saveTripPhrases(trip.id, nextPhrases);

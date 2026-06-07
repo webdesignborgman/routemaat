@@ -1,43 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { CalendarClock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SchedulePageClient } from "@/features/ideas/SchedulePageClient";
-import { loadStoredTrips } from "@/features/trips/tripClientStorage";
-import { getTripById } from "@/features/trips/tripMockData";
-import type { Trip } from "@/features/trips/tripTypes";
+import { useTripLookup } from "@/features/trips/useTripLookup";
 
 type ScheduleRouteClientProps = {
   tripId: string;
 };
 
 export function ScheduleRouteClient({ tripId }: ScheduleRouteClientProps) {
-  const mockTrip = getTripById(tripId) ?? null;
-  const [storedTrip, setStoredTrip] = useState<Trip | null>(() =>
-    mockTrip
-  );
-  const [hasCheckedStoredTrips, setHasCheckedStoredTrips] = useState(
-    Boolean(mockTrip)
-  );
-  const trip = mockTrip ?? storedTrip;
+  const { trip, isLoading } = useTripLookup(tripId);
 
-  useEffect(() => {
-    if (mockTrip) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setStoredTrip(loadStoredTrips().find((trip) => trip.id === tripId) ?? null);
-      setHasCheckedStoredTrips(true);
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [mockTrip, tripId]);
-
-  if (!trip && !hasCheckedStoredTrips) {
+  if (isLoading) {
     return (
       <section className="rounded-xl border border-cyan-100 bg-white/85 px-5 py-12 text-center shadow-[0_18px_45px_rgba(14,165,233,0.10)]">
         <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">

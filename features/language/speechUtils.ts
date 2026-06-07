@@ -1,5 +1,9 @@
 export function canSpeakPhrase() {
-  return typeof window !== "undefined" && "speechSynthesis" in window;
+  return (
+    typeof window !== "undefined" &&
+    "speechSynthesis" in window &&
+    "SpeechSynthesisUtterance" in window
+  );
 }
 
 export function speakPhrase(text: string, lang = "ja-JP") {
@@ -7,7 +11,7 @@ export function speakPhrase(text: string, lang = "ja-JP") {
     return false;
   }
 
-  const utterance = new SpeechSynthesisUtterance(text);
+  const utterance = new window.SpeechSynthesisUtterance(text);
   utterance.lang = lang;
 
   window.speechSynthesis.cancel();

@@ -23,70 +23,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  ideaCategoryLabels,
-} from "@/features/ideas/ideaLabels";
+import { ideaCategoryLabels } from "@/features/ideas/ideaLabels";
 import {
   loadTripIdeas,
   saveTripIdeas,
 } from "@/features/ideas/ideaClientStorage";
+import { updateIdeaFromForm } from "@/features/ideas/ideaFormMapping";
 import {
   formatScheduleDayHeading,
   formatScheduleTime,
-  groupScheduledIdeasByDate,
+  getTripScheduleDays,
 } from "@/features/ideas/ideaScheduleUtils";
 import { IdeaForm } from "@/features/ideas/IdeaForm";
 import type { IdeaFormValues, TripIdea } from "@/features/ideas/ideaTypes";
+import { getTodayDateString } from "@/features/trips/tripDates";
 import type { Trip } from "@/features/trips/tripTypes";
 
 type SchedulePageClientProps = {
   trip: Trip;
 };
 
-function parseTags(tagsText: string) {
-  const tags = tagsText
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0);
-
-  return Array.from(
-    new Map(tags.map((tag) => [tag.toLocaleLowerCase("nl-NL"), tag])).values()
-  );
-}
-
-function optionalText(value: string) {
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function updateIdea(idea: TripIdea, values: IdeaFormValues): TripIdea {
-  return {
-    ...idea,
-    title: values.title.trim(),
-    description: values.description.trim(),
-    category: values.category,
-    status: values.status,
-    priority: values.priority,
-    city: optionalText(values.city),
-    locationName: optionalText(values.locationName),
-    googleMapsUrl: optionalText(values.googleMapsUrl),
-    websiteUrl: optionalText(values.websiteUrl),
-    notes: optionalText(values.notes),
-    customsNotes: optionalText(values.customsNotes),
-    showInSchedule: values.showInSchedule,
-    scheduleDate: values.showInSchedule
-      ? optionalText(values.scheduleDate)
-      : undefined,
-    startTime: values.showInSchedule ? optionalText(values.startTime) : undefined,
-    endTime: values.showInSchedule ? optionalText(values.endTime) : undefined,
-    tags: parseTags(values.tagsText),
-    updatedAt: new Date(),
-  };
-}
-
 export function SchedulePageClient({ trip }: SchedulePageClientProps) {
   const [ideas, setIdeas] = useState<TripIdea[]>(() => loadTripIdeas(trip.id));
   const [editingIdea, setEditingIdea] = useState<TripIdea | undefined>();
+  const todayDate = getTodayDateString();
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -96,10 +56,25 @@ export function SchedulePageClient({ trip }: SchedulePageClientProps) {
     return () => window.clearTimeout(timeoutId);
   }, [trip.id]);
 
-  const scheduleGroups = useMemo(
-    () => groupScheduledIdeasByDate(ideas),
-    [ideas]
+  const scheduleDays = useMemo(
+    () => getTripScheduleDays(trip, ideas),
+    [ideas, trip]
   );
+  const todayDay = scheduleDays.find((day) => day.date === todayDate);
+  const plannedIdeaCount = scheduleDays.reduce(
+    (total, day) => total + day.ideas.length,
+    0
+  );
+
+  function scrollToToday() {
+    if (!todayDay) {
+      return;
+    }
+
+    document
+      .getElementById(getScheduleDayId(todayDay.date))
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   function closeDialog() {
     setEditingIdea(undefined);
@@ -112,7 +87,7 @@ export function SchedulePageClient({ trip }: SchedulePageClientProps) {
 
     setIdeas((currentIdeas) => {
       const nextIdeas = currentIdeas.map((idea) =>
-        idea.id === editingIdea.id ? updateIdea(idea, values) : idea
+        idea.id === editingIdea.id ? updateIdeaFromForm(idea, values) : idea
       );
       saveTripIdeas(trip.id, nextIdeas);
       return nextIdeas;
@@ -124,33 +99,81 @@ export function SchedulePageClient({ trip }: SchedulePageClientProps) {
     <div className="space-y-6">
       <PageHeader
         title="Reisschema"
-        description={`Geplande ideeën en activiteiten voor ${trip.title}.`}
+        description={`Geplande items uit Ideeën / Activiteiten voor ${trip.title}.`}
         backHref={`/trips/${trip.id}`}
+        action={
+          todayDay ? (
+            <Button
+              type="button"
+              onClick={scrollToToday}
+              className="w-full bg-slate-950 text-white shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:bg-slate-800 sm:w-auto"
+            >
+              <CalendarClock className="size-4" aria-hidden="true" />
+              Naar vandaag
+            </Button>
+          ) : undefined
+        }
       />
 
-      {scheduleGroups.length === 0 ? (
-        <EmptyScheduleState tripId={trip.id} />
+      {scheduleDays.length > 0 ? (
+        <section className="rounded-xl border border-cyan-100 bg-white/85 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_24px_rgba(14,165,233,0.06)]">
+          <span className="font-medium text-slate-800">
+            {scheduleDays.length} {scheduleDays.length === 1 ? "dag" : "dagen"}
+          </span>{" "}
+          in dit reisschema, met {plannedIdeaCount}{" "}
+          {plannedIdeaCount === 1 ? "gepland item" : "geplande items"}.
+        </section>
+      ) : null}
+
+      {scheduleDays.length === 0 ? (
+        <MissingScheduleDaysState />
       ) : (
         <div className="space-y-8">
-          {scheduleGroups.map((group) => (
-            <section key={group.date} className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
+          {scheduleDays.map((day) => (
+            <section
+              key={day.date}
+              id={getScheduleDayId(day.date)}
+              className="scroll-mt-24 space-y-4"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
                   <CalendarClock className="size-5" aria-hidden="true" />
                 </div>
-                <h2 className="text-xl font-semibold text-slate-950">
-                  {formatScheduleDayHeading(trip, group.date)}
-                </h2>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-semibold text-slate-950">
+                      {formatScheduleDayHeading(trip, day.date)}
+                    </h2>
+                    {day.date === todayDate ? (
+                      <Badge className="bg-lime-100 text-lime-800 hover:bg-lime-100">
+                        Vandaag
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {day.ideas.length === 0
+                      ? "Nog niets gepland"
+                      : `${day.ideas.length} ${
+                          day.ideas.length === 1
+                            ? "activiteit"
+                            : "activiteiten"
+                        } gepland`}
+                  </p>
+                </div>
               </div>
               <div className="space-y-4 border-l border-cyan-100 pl-4">
-                {group.ideas.map((idea) => (
-                  <ScheduleItem
-                    key={idea.id}
-                    idea={idea}
-                    tripId={trip.id}
-                    onEdit={setEditingIdea}
-                  />
-                ))}
+                {day.ideas.length > 0 ? (
+                  day.ideas.map((idea) => (
+                    <ScheduleItem
+                      key={idea.id}
+                      idea={idea}
+                      tripId={trip.id}
+                      onEdit={setEditingIdea}
+                    />
+                  ))
+                ) : (
+                  <EmptyScheduleDay tripId={trip.id} />
+                )}
               </div>
             </section>
           ))}
@@ -180,6 +203,10 @@ export function SchedulePageClient({ trip }: SchedulePageClientProps) {
       </Dialog>
     </div>
   );
+}
+
+function getScheduleDayId(date: string) {
+  return `reisschema-dag-${date}`;
 }
 
 type ScheduleItemProps = {
@@ -283,28 +310,49 @@ function ScheduleItem({ idea, tripId, onEdit }: ScheduleItemProps) {
   );
 }
 
-type EmptyScheduleStateProps = {
+type EmptyScheduleDayProps = {
   tripId: string;
 };
 
-function EmptyScheduleState({ tripId }: EmptyScheduleStateProps) {
+function EmptyScheduleDay({ tripId }: EmptyScheduleDayProps) {
+  return (
+    <div className="rounded-xl border border-dashed border-cyan-200 bg-white/75 px-4 py-5 shadow-[0_12px_30px_rgba(14,165,233,0.06)]">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
+            <Sparkles className="size-4" aria-hidden="true" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-950">Nog niets gepland</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Kies in Ideeën / Activiteiten een item en zet Plaats in reisschema aan.
+            </p>
+          </div>
+        </div>
+        <Button
+          asChild
+          variant="outline"
+          className="w-full justify-start border-cyan-100 bg-white sm:w-auto"
+        >
+          <Link href={`/trips/${tripId}/ideas`}>Naar Ideeën / Activiteiten</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function MissingScheduleDaysState() {
   return (
     <section className="rounded-xl border border-dashed border-cyan-200 bg-white/85 px-5 py-12 text-center shadow-[0_18px_45px_rgba(14,165,233,0.10)]">
       <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">
         <Sparkles className="size-5" aria-hidden="true" />
       </div>
       <h2 className="text-xl font-semibold text-slate-950">
-        Nog geen activiteiten in het reisschema
+        Geen reisdagen gevonden
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
-        Zet bij een idee of activiteit de optie Plaats in reisschema aan.
+        Controleer de start- en einddatum van deze reis.
       </p>
-      <Button
-        asChild
-        className="mt-6 bg-slate-950 text-white hover:bg-slate-800"
-      >
-        <Link href={`/trips/${tripId}/ideas`}>Naar ideeën / activiteiten</Link>
-      </Button>
     </section>
   );
 }

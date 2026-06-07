@@ -1,4 +1,9 @@
 import { mockIdeas } from "@/features/ideas/ideaMockData";
+import {
+  ideaCategories,
+  ideaPriorities,
+  ideaStatuses,
+} from "@/features/ideas/ideaLabels";
 import type {
   IdeaCategory,
   IdeaPriority,
@@ -8,23 +13,6 @@ import type {
 
 const STORAGE_KEY = "routemaat.mockIdeas.v1";
 const emptyIdeas: TripIdea[] = [];
-
-const ideaCategories: IdeaCategory[] = [
-  "sightseeing",
-  "restaurant",
-  "hotel",
-  "shop",
-  "activity",
-  "transport",
-  "practical",
-  "language",
-  "custom",
-  "document",
-  "other",
-];
-
-const ideaStatuses: IdeaStatus[] = ["idea", "maybe", "planned", "booked", "skipped"];
-const ideaPriorities: IdeaPriority[] = ["low", "medium", "high"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
