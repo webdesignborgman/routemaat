@@ -24,17 +24,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ideaCategoryLabels } from "@/features/ideas/ideaLabels";
-import {
-  loadTripIdeas,
-  saveTripIdeas,
-} from "@/features/ideas/ideaClientStorage";
-import { updateIdeaFromForm } from "@/features/ideas/ideaFormMapping";
+import { updateIdeaInputFromForm } from "@/features/ideas/ideaFormMapping";
 import {
   formatScheduleDayHeading,
   formatScheduleTime,
   getTripScheduleDays,
 } from "@/features/ideas/ideaScheduleUtils";
 import { IdeaForm } from "@/features/ideas/IdeaForm";
+import {
+  listIdeasForTrip,
+  updateIdeaForTrip,
+} from "@/features/ideas/ideaService";
 import type { IdeaFormValues, TripIdea } from "@/features/ideas/ideaTypes";
 import { getTodayDateString } from "@/features/trips/tripDates";
 import type { Trip } from "@/features/trips/tripTypes";
@@ -44,17 +44,48 @@ type SchedulePageClientProps = {
 };
 
 export function SchedulePageClient({ trip }: SchedulePageClientProps) {
-  const [ideas, setIdeas] = useState<TripIdea[]>(() => loadTripIdeas(trip.id));
+  const [ideas, setIdeas] = useState<TripIdea[]>([]);
   const [editingIdea, setEditingIdea] = useState<TripIdea | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const todayDate = getTodayDateString();
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setIdeas(loadTripIdeas(trip.id));
-    }, 0);
+    let isCancelled = false;
 
-    return () => window.clearTimeout(timeoutId);
+    async function loadIdeas() {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const loadedIdeas = await listIdeasForTrip(trip.id);
+
+        if (!isCancelled) {
+          setIdeas(loadedIdeas);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setErrorMessage(getErrorMessage(error));
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadIdeas();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [trip.id]);
+
+  async function refreshIdeas() {
+    const loadedIdeas = await listIdeasForTrip(trip.id);
+    setIdeas(loadedIdeas);
+  }
 
   const scheduleDays = useMemo(
     () => getTripScheduleDays(trip, ideas),
@@ -80,19 +111,27 @@ export function SchedulePageClient({ trip }: SchedulePageClientProps) {
     setEditingIdea(undefined);
   }
 
-  function handleSubmit(values: IdeaFormValues) {
+  async function handleSubmit(values: IdeaFormValues) {
     if (!editingIdea) {
       return;
     }
 
-    setIdeas((currentIdeas) => {
-      const nextIdeas = currentIdeas.map((idea) =>
-        idea.id === editingIdea.id ? updateIdeaFromForm(idea, values) : idea
+    setIsSaving(true);
+    setErrorMessage(null);
+
+    try {
+      await updateIdeaForTrip(
+        trip.id,
+        editingIdea.id,
+        updateIdeaInputFromForm(values)
       );
-      saveTripIdeas(trip.id, nextIdeas);
-      return nextIdeas;
-    });
-    closeDialog();
+      await refreshIdeas();
+      closeDialog();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -115,69 +154,93 @@ export function SchedulePageClient({ trip }: SchedulePageClientProps) {
         }
       />
 
-      {scheduleDays.length > 0 ? (
-        <section className="rounded-xl border border-cyan-100 bg-white/85 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_24px_rgba(14,165,233,0.06)]">
-          <span className="font-medium text-slate-800">
-            {scheduleDays.length} {scheduleDays.length === 1 ? "dag" : "dagen"}
-          </span>{" "}
-          in dit reisschema, met {plannedIdeaCount}{" "}
-          {plannedIdeaCount === 1 ? "gepland item" : "geplande items"}.
-        </section>
-      ) : null}
-
-      {scheduleDays.length === 0 ? (
-        <MissingScheduleDaysState />
+      {errorMessage ? (
+        <ScheduleStatusState
+          title="Reisschema laden lukt niet"
+          description={errorMessage}
+          actionLabel="Opnieuw proberen"
+          onAction={() => {
+            setIsLoading(true);
+            setErrorMessage(null);
+            void refreshIdeas()
+              .catch((error) => setErrorMessage(getErrorMessage(error)))
+              .finally(() => setIsLoading(false));
+          }}
+        />
+      ) : isLoading ? (
+        <ScheduleStatusState
+          title="Reisschema laden"
+          description="We halen de geplande ideeën en activiteiten op uit Firestore."
+        />
       ) : (
-        <div className="space-y-8">
-          {scheduleDays.map((day) => (
-            <section
-              key={day.date}
-              id={getScheduleDayId(day.date)}
-              className="scroll-mt-24 space-y-4"
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
-                  <CalendarClock className="size-5" aria-hidden="true" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-xl font-semibold text-slate-950">
-                      {formatScheduleDayHeading(trip, day.date)}
-                    </h2>
-                    {day.date === todayDate ? (
-                      <Badge className="bg-lime-100 text-lime-800 hover:bg-lime-100">
-                        Vandaag
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {day.ideas.length === 0
-                      ? "Nog niets gepland"
-                      : `${day.ideas.length} ${
-                          day.ideas.length === 1
-                            ? "activiteit"
-                            : "activiteiten"
-                        } gepland`}
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-4 border-l border-cyan-100 pl-4">
-                {day.ideas.length > 0 ? (
-                  day.ideas.map((idea) => (
-                    <ScheduleItem
-                      key={idea.id}
-                      idea={idea}
-                      tripId={trip.id}
-                      onEdit={setEditingIdea}
-                    />
-                  ))
-                ) : (
-                  <EmptyScheduleDay tripId={trip.id} />
-                )}
-              </div>
+        <>
+          {scheduleDays.length > 0 ? (
+            <section className="rounded-xl border border-cyan-100 bg-white/85 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_24px_rgba(14,165,233,0.06)]">
+              <span className="font-medium text-slate-800">
+                {scheduleDays.length}{" "}
+                {scheduleDays.length === 1 ? "dag" : "dagen"}
+              </span>{" "}
+              in dit reisschema, met {plannedIdeaCount}{" "}
+              {plannedIdeaCount === 1 ? "gepland item" : "geplande items"}.
             </section>
-          ))}
-        </div>
+          ) : null}
+
+          {scheduleDays.length === 0 ? (
+            <MissingScheduleDaysState />
+          ) : (
+            <div className="space-y-8">
+              {scheduleDays.map((day) => (
+                <section
+                  key={day.date}
+                  id={getScheduleDayId(day.date)}
+                  className="scroll-mt-24 space-y-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
+                      <CalendarClock className="size-5" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-xl font-semibold text-slate-950">
+                          {formatScheduleDayHeading(trip, day.date)}
+                        </h2>
+                        {day.date === todayDate ? (
+                          <Badge className="bg-lime-100 text-lime-800 hover:bg-lime-100">
+                            Vandaag
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {day.ideas.length === 0
+                          ? "Nog niets gepland"
+                          : `${day.ideas.length} ${
+                              day.ideas.length === 1
+                                ? "activiteit"
+                                : "activiteiten"
+                            } gepland`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-4 border-l border-cyan-100 pl-4">
+                    {day.ideas.length > 0 ? (
+                      day.ideas.map((idea) => (
+                        <ScheduleItem
+                          key={idea.id}
+                          idea={idea}
+                          tripId={trip.id}
+                          isDisabled={isSaving}
+                          onEdit={setEditingIdea}
+                        />
+                      ))
+                    ) : (
+                      <EmptyScheduleDay tripId={trip.id} />
+                    )}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <Dialog
@@ -195,6 +258,11 @@ export function SchedulePageClient({ trip }: SchedulePageClientProps) {
             <IdeaForm
               key={editingIdea.id}
               idea={editingIdea}
+              isSubmitting={isSaving}
+              scheduleDateRange={{
+                startDate: trip.startDate,
+                endDate: trip.endDate,
+              }}
               onSubmit={handleSubmit}
               onCancel={closeDialog}
             />
@@ -209,13 +277,55 @@ function getScheduleDayId(date: string) {
   return `reisschema-dag-${date}`;
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "Er ging iets mis. Probeer het opnieuw.";
+}
+
+type ScheduleStatusStateProps = {
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+};
+
+function ScheduleStatusState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: ScheduleStatusStateProps) {
+  return (
+    <section className="rounded-xl border border-dashed border-cyan-200 bg-white/85 px-5 py-12 text-center shadow-[0_18px_45px_rgba(14,165,233,0.10)]">
+      <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">
+        <Sparkles className="size-5" aria-hidden="true" />
+      </div>
+      <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
+        {description}
+      </p>
+      {actionLabel && onAction ? (
+        <Button
+          type="button"
+          onClick={onAction}
+          className="mt-6 bg-slate-950 text-white hover:bg-slate-800"
+        >
+          {actionLabel}
+        </Button>
+      ) : null}
+    </section>
+  );
+}
+
 type ScheduleItemProps = {
   idea: TripIdea;
   tripId: string;
+  isDisabled: boolean;
   onEdit: (idea: TripIdea) => void;
 };
 
-function ScheduleItem({ idea, tripId, onEdit }: ScheduleItemProps) {
+function ScheduleItem({ idea, tripId, isDisabled, onEdit }: ScheduleItemProps) {
   const place = [idea.city, idea.locationName].filter(Boolean).join(" - ");
 
   return (
@@ -246,6 +356,7 @@ function ScheduleItem({ idea, tripId, onEdit }: ScheduleItemProps) {
           type="button"
           variant="outline"
           className="w-full border-cyan-100 bg-white sm:w-auto"
+          disabled={isDisabled}
           onClick={() => onEdit(idea)}
         >
           <Pencil className="size-4" aria-hidden="true" />

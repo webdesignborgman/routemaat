@@ -13,16 +13,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DEMO_USER_ID } from "@/features/auth/authConstants";
 import { useAuth } from "@/features/auth/useAuth";
 import { IdeaCard } from "@/features/ideas/IdeaCard";
-import { loadTripIdeas, saveTripIdeas } from "@/features/ideas/ideaClientStorage";
 import {
-  createIdeaFromForm,
-  updateIdeaFromForm,
+  createIdeaInputFromForm,
+  updateIdeaInputFromForm,
 } from "@/features/ideas/ideaFormMapping";
 import { IdeaFilters } from "@/features/ideas/IdeaFilters";
 import { IdeaForm } from "@/features/ideas/IdeaForm";
+import {
+  createIdeaForTrip,
+  deleteIdeaForTrip,
+  ensureTripDocumentsForIdeaWrites,
+  listIdeasForTrip,
+  updateIdeaForTrip,
+} from "@/features/ideas/ideaService";
 import type {
   IdeaFilters as IdeaFiltersType,
   IdeaFormValues,
@@ -41,6 +46,8 @@ const defaultFilters: IdeaFiltersType = {
   priority: "all",
   tag: "all",
 };
+
+const firestoreActionTimeoutMs = 15_000;
 
 function normalizeSearchValue(value: string) {
   return value.trim().toLocaleLowerCase("nl-NL");
@@ -84,19 +91,53 @@ function matchesFilters(idea: TripIdea, filters: IdeaFiltersType) {
 
 export function IdeasPageClient({ trip }: IdeasPageClientProps) {
   const { user } = useAuth();
-  const [ideas, setIdeas] = useState<TripIdea[]>(() => loadTripIdeas(trip.id));
+  const [ideas, setIdeas] = useState<TripIdea[]>([]);
   const [filters, setFilters] = useState<IdeaFiltersType>(defaultFilters);
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingIdea, setEditingIdea] = useState<TripIdea | undefined>();
   const [ideaToDelete, setIdeaToDelete] = useState<TripIdea | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
+  const [mutationErrorMessage, setMutationErrorMessage] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setIdeas(loadTripIdeas(trip.id));
-    }, 0);
+    let isCancelled = false;
 
-    return () => window.clearTimeout(timeoutId);
+    async function loadIdeas() {
+      setIsLoading(true);
+      setLoadErrorMessage(null);
+
+      try {
+        const loadedIdeas = await listIdeasForTrip(trip.id);
+
+        if (!isCancelled) {
+          setIdeas(loadedIdeas);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setLoadErrorMessage(getErrorMessage(error));
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadIdeas();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [trip.id]);
+
+  async function refreshIdeas() {
+    const loadedIdeas = await listIdeasForTrip(trip.id);
+    setIdeas(loadedIdeas);
+  }
 
   const availableTags = useMemo(() => {
     const tags = ideas.flatMap((idea) => idea.tags);
@@ -117,56 +158,90 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
 
   function openCreateDialog() {
     setEditingIdea(undefined);
+    setMutationErrorMessage(null);
     setDialogMode("create");
   }
 
   function openEditDialog(idea: TripIdea) {
     setEditingIdea(idea);
+    setMutationErrorMessage(null);
     setDialogMode("edit");
   }
 
   function closeDialog() {
     setDialogMode(null);
     setEditingIdea(undefined);
+    setMutationErrorMessage(null);
   }
 
-  function handleSubmit(values: IdeaFormValues) {
-    if (dialogMode === "edit" && editingIdea) {
-      setIdeas((currentIdeas) => {
-        const nextIdeas = currentIdeas.map((idea) =>
-          idea.id === editingIdea.id ? updateIdeaFromForm(idea, values) : idea
-        );
-        saveTripIdeas(trip.id, nextIdeas);
-        return nextIdeas;
-      });
-    } else {
-      setIdeas((currentIdeas) => {
-        const nextIdeas = [
-          createIdeaFromForm(values, trip.id, user?.uid ?? DEMO_USER_ID),
-          ...currentIdeas,
-        ];
-        saveTripIdeas(trip.id, nextIdeas);
-        return nextIdeas;
-      });
+  async function handleSubmit(values: IdeaFormValues) {
+    if (!user) {
+      setMutationErrorMessage("Log opnieuw in om dit idee op te slaan.");
+      return;
     }
-    closeDialog();
+
+    setIsSaving(true);
+    setMutationErrorMessage(null);
+
+    try {
+      if (dialogMode === "edit" && editingIdea) {
+        await withFirestoreTimeout(
+          updateIdeaForTrip(
+            trip.id,
+            editingIdea.id,
+            updateIdeaInputFromForm(values)
+          )
+        );
+      } else {
+        await withFirestoreTimeout(
+          ensureTripDocumentsForIdeaWrites(trip, user.uid)
+        );
+        await withFirestoreTimeout(
+          createIdeaForTrip(trip.id, createIdeaInputFromForm(values), user.uid)
+        );
+      }
+
+      await refreshIdeas();
+      closeDialog();
+    } catch (error) {
+      console.error("Idee opslaan mislukt", error);
+      setMutationErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function handleDelete(idea: TripIdea) {
+    setMutationErrorMessage(null);
     setIdeaToDelete(idea);
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!ideaToDelete) {
       return;
     }
 
-    setIdeas((currentIdeas) => {
-      const nextIdeas = currentIdeas.filter((idea) => idea.id !== ideaToDelete.id);
-      saveTripIdeas(trip.id, nextIdeas);
-      return nextIdeas;
-    });
-    setIdeaToDelete(null);
+    setIsSaving(true);
+    setMutationErrorMessage(null);
+
+    try {
+      await withFirestoreTimeout(deleteIdeaForTrip(trip.id, ideaToDelete.id));
+      await refreshIdeas();
+      setIdeaToDelete(null);
+    } catch (error) {
+      console.error("Idee verwijderen mislukt", error);
+      setMutationErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function retryLoading() {
+    setIsLoading(true);
+    setLoadErrorMessage(null);
+    void refreshIdeas()
+      .catch((error) => setLoadErrorMessage(getErrorMessage(error)))
+      .finally(() => setIsLoading(false));
   }
 
   return (
@@ -179,6 +254,7 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
           <Button
             type="button"
             onClick={openCreateDialog}
+            disabled={isSaving}
             className="w-full bg-slate-950 text-white shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:bg-slate-800 sm:w-auto"
           >
             <Plus className="size-4" aria-hidden="true" />
@@ -187,43 +263,61 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
         }
       />
 
-      <IdeaFilters
-        filters={filters}
-        availableTags={availableTags}
-        onChange={setFilters}
-      />
-
-      {ideas.length > 0 ? (
-        <div className="rounded-xl border border-cyan-100 bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_24px_rgba(14,165,233,0.06)]">
-          {filteredIdeas.length} van {ideas.length} items zichtbaar in Ideeën / Activiteiten
-        </div>
-      ) : null}
-
-      {ideas.length === 0 ? (
+      {loadErrorMessage ? (
         <EmptyState
-          title="Geen items gevonden"
-          description="Voeg het eerste idee of de eerste activiteit toe voor deze reis."
-          actionLabel="Idee / activiteit toevoegen"
-          onAction={openCreateDialog}
+          title="Ideeën laden lukt niet"
+          description={loadErrorMessage}
+          actionLabel="Opnieuw proberen"
+          onAction={retryLoading}
         />
-      ) : filteredIdeas.length === 0 ? (
+      ) : isLoading ? (
         <EmptyState
-          title="Geen resultaten"
-          description="Pas je zoekterm of filters aan om weer items in Ideeën / Activiteiten te zien."
-          actionLabel={hasActiveFilters ? "Filters wissen" : undefined}
-          onAction={hasActiveFilters ? () => setFilters(defaultFilters) : undefined}
+          title="Ideeën laden"
+          description="We halen de ideeën en activiteiten voor deze reis op uit Firestore."
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {filteredIdeas.map((idea) => (
-            <IdeaCard
-              key={idea.id}
-              idea={idea}
-              onEdit={openEditDialog}
-              onDelete={handleDelete}
+        <>
+          <IdeaFilters
+            filters={filters}
+            availableTags={availableTags}
+            onChange={setFilters}
+          />
+
+          {ideas.length > 0 ? (
+            <div className="rounded-xl border border-cyan-100 bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_24px_rgba(14,165,233,0.06)]">
+              {filteredIdeas.length} van {ideas.length} items zichtbaar in Ideeën / Activiteiten
+            </div>
+          ) : null}
+
+          {ideas.length === 0 ? (
+            <EmptyState
+              title="Geen items gevonden"
+              description="Voeg het eerste idee of de eerste activiteit toe voor deze reis."
+              actionLabel="Idee / activiteit toevoegen"
+              onAction={openCreateDialog}
             />
-          ))}
-        </div>
+          ) : filteredIdeas.length === 0 ? (
+            <EmptyState
+              title="Geen resultaten"
+              description="Pas je zoekterm of filters aan om weer items in Ideeën / Activiteiten te zien."
+              actionLabel={hasActiveFilters ? "Filters wissen" : undefined}
+              onAction={
+                hasActiveFilters ? () => setFilters(defaultFilters) : undefined
+              }
+            />
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {filteredIdeas.map((idea) => (
+                <IdeaCard
+                  key={idea.id}
+                  idea={idea}
+                  onEdit={openEditDialog}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <Dialog
@@ -241,9 +335,17 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
               Vul alleen in wat nu al bekend is. Details kunnen later worden aangepast.
             </DialogDescription>
           </DialogHeader>
+          {mutationErrorMessage ? (
+            <InlineErrorMessage message={mutationErrorMessage} />
+          ) : null}
           <IdeaForm
             key={editingIdea?.id ?? "new-idea"}
             idea={editingIdea}
+            isSubmitting={isSaving}
+            scheduleDateRange={{
+              startDate: trip.startDate,
+              endDate: trip.endDate,
+            }}
             onSubmit={handleSubmit}
             onCancel={closeDialog}
           />
@@ -252,7 +354,12 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
 
       <Dialog
         open={ideaToDelete !== null}
-        onOpenChange={(open) => !open && setIdeaToDelete(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIdeaToDelete(null);
+            setMutationErrorMessage(null);
+          }
+        }}
       >
         <DialogContent className="border-cyan-100 bg-white shadow-[0_22px_70px_rgba(236,72,153,0.14)] sm:max-w-md">
           <DialogHeader>
@@ -266,12 +373,18 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
                 : "Dit idee wordt uit deze lijst verwijderd."}
             </DialogDescription>
           </DialogHeader>
+          {mutationErrorMessage ? (
+            <InlineErrorMessage message={mutationErrorMessage} />
+          ) : null}
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               className="w-full sm:w-auto"
-              onClick={() => setIdeaToDelete(null)}
+              onClick={() => {
+                setIdeaToDelete(null);
+                setMutationErrorMessage(null);
+              }}
             >
               Annuleren
             </Button>
@@ -279,6 +392,7 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
               type="button"
               variant="destructive"
               className="w-full sm:w-auto"
+              disabled={isSaving}
               onClick={confirmDelete}
             >
               Verwijderen
@@ -286,6 +400,61 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function getErrorMessage(error: unknown) {
+  if (isFirestoreTimeoutError(error)) {
+    return "Firestore reageert niet binnen 15 seconden. Controleer je internetverbinding, Firebase-configuratie of security rules.";
+  }
+
+  if (isFirebasePermissionError(error)) {
+    return "Je hebt nog geen rechten om ideeën in Firestore op te slaan. Controleer de security rules voor trips/{tripId}/ideas.";
+  }
+
+  return error instanceof Error
+    ? error.message
+    : "Er ging iets mis. Probeer het opnieuw.";
+}
+
+async function withFirestoreTimeout<T>(operation: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error("firestore-timeout"));
+    }, firestoreActionTimeoutMs);
+  });
+
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+function isFirestoreTimeoutError(error: unknown) {
+  return error instanceof Error && error.message === "firestore-timeout";
+}
+
+function isFirebasePermissionError(error: unknown) {
+  return isRecord(error) && error.code === "permission-denied";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+type InlineErrorMessageProps = {
+  message: string;
+};
+
+function InlineErrorMessage({ message }: InlineErrorMessageProps) {
+  return (
+    <div className="rounded-xl border border-pink-100 bg-pink-50 px-4 py-3 text-sm leading-6 text-pink-800">
+      {message}
     </div>
   );
 }

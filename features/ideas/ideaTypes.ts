@@ -39,6 +39,13 @@ export type TripIdea = {
   updatedAt: Date;
 };
 
+export type CreateTripIdeaInput = Omit<
+  TripIdea,
+  "id" | "tripId" | "addedBy" | "createdAt" | "updatedAt"
+>;
+
+export type UpdateTripIdeaInput = Partial<CreateTripIdeaInput>;
+
 export type IdeaFormValues = {
   title: string;
   description: string;

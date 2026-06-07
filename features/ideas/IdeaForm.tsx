@@ -31,7 +31,12 @@ import type {
 
 type IdeaFormProps = {
   idea?: TripIdea;
-  onSubmit: (values: IdeaFormValues) => void;
+  isSubmitting?: boolean;
+  scheduleDateRange?: {
+    startDate: string;
+    endDate: string;
+  };
+  onSubmit: (values: IdeaFormValues) => void | Promise<void>;
   onCancel: () => void;
 };
 
@@ -96,12 +101,18 @@ function normalizeTimeInput(value: string) {
   return isValidTime(normalizedValue) ? normalizedValue : trimmedValue;
 }
 
-export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
+export function IdeaForm({
+  idea,
+  isSubmitting = false,
+  scheduleDateRange,
+  onSubmit,
+  onCancel,
+}: IdeaFormProps) {
   const initialValues = useMemo(() => getInitialValues(idea), [idea]);
   const [values, setValues] = useState<IdeaFormValues>(initialValues);
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
-  const errors = getValidationErrors(values);
+  const errors = getValidationErrors(values, scheduleDateRange);
   const showTitleError = submitAttempted && Boolean(errors.title);
   const showScheduleDateError = submitAttempted && Boolean(errors.scheduleDate);
   const showStartTimeError = submitAttempted && Boolean(errors.startTime);
@@ -117,14 +128,17 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
     }));
   }
 
-  function handleSubmit(valuesToSubmit: IdeaFormValues) {
+  async function handleSubmit(valuesToSubmit: IdeaFormValues) {
     setSubmitAttempted(true);
 
-    if (Object.keys(getValidationErrors(valuesToSubmit)).length > 0) {
+    if (
+      Object.keys(getValidationErrors(valuesToSubmit, scheduleDateRange)).length >
+      0
+    ) {
       return;
     }
 
-    onSubmit(valuesToSubmit);
+    await onSubmit(valuesToSubmit);
   }
 
   return (
@@ -133,7 +147,7 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        handleSubmit(values);
+        void handleSubmit(values);
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
@@ -142,9 +156,18 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
             <input
               type="checkbox"
               checked={values.showInSchedule}
-              onChange={(event) =>
-                updateValue("showInSchedule", event.target.checked)
-              }
+              onChange={(event) => {
+                const showInSchedule = event.target.checked;
+
+                setValues((currentValues) => ({
+                  ...currentValues,
+                  showInSchedule,
+                  scheduleDate:
+                    showInSchedule && !currentValues.scheduleDate
+                      ? scheduleDateRange?.startDate ?? ""
+                      : currentValues.scheduleDate,
+                }));
+              }}
               className="mt-1 size-4 rounded border-cyan-300 text-cyan-700"
             />
             <span>
@@ -165,6 +188,8 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
               <Input
                 id="idea-schedule-date"
                 type="date"
+                min={scheduleDateRange?.startDate}
+                max={scheduleDateRange?.endDate}
                 value={values.scheduleDate}
                 onChange={(event) =>
                   updateValue("scheduleDate", event.target.value)
@@ -386,23 +411,27 @@ export function IdeaForm({ idea, onSubmit, onCancel }: IdeaFormProps) {
           type="button"
           variant="outline"
           className="w-full sm:w-auto"
+          disabled={isSubmitting}
           onClick={onCancel}
         >
           Annuleren
         </Button>
         <Button
           type="submit"
-          disabled={values.title.trim().length === 0}
+          disabled={isSubmitting || values.title.trim().length === 0}
           className="w-full bg-slate-950 text-white shadow-[0_0_20px_rgba(34,211,238,0.28)] hover:bg-slate-800 sm:w-auto"
         >
-          Opslaan
+          {isSubmitting ? "Opslaan..." : "Opslaan"}
         </Button>
       </div>
     </form>
   );
 }
 
-function getValidationErrors(values: IdeaFormValues): IdeaFormErrors {
+function getValidationErrors(
+  values: IdeaFormValues,
+  scheduleDateRange?: IdeaFormProps["scheduleDateRange"]
+): IdeaFormErrors {
   const errors: IdeaFormErrors = {};
 
   if (values.title.trim().length === 0) {
@@ -412,6 +441,12 @@ function getValidationErrors(values: IdeaFormValues): IdeaFormErrors {
   if (values.showInSchedule) {
     if (!values.scheduleDate) {
       errors.scheduleDate = "Kies een datum voor het reisschema.";
+    } else if (
+      scheduleDateRange &&
+      (values.scheduleDate < scheduleDateRange.startDate ||
+        values.scheduleDate > scheduleDateRange.endDate)
+    ) {
+      errors.scheduleDate = "Kies een datum binnen de reisperiode.";
     }
 
     if (!values.startTime) {

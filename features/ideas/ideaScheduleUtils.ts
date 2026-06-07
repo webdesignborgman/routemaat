@@ -49,8 +49,7 @@ export function getScheduledIdeas(ideas: TripIdea[]) {
     .filter(
       (idea) =>
         idea.showInSchedule &&
-        Boolean(idea.scheduleDate) &&
-        Boolean(idea.startTime)
+        Boolean(idea.scheduleDate)
     )
     .sort((firstIdea, secondIdea) => {
       const firstDate = firstIdea.scheduleDate ?? "";
