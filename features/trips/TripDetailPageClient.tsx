@@ -39,6 +39,11 @@ import { canEditTripContent } from "@/features/members/memberPermissions";
 import { getTripMember } from "@/features/members/memberService";
 import type { TripMember } from "@/features/members/memberTypes";
 import {
+  TripLanguageFields,
+  type TripLanguageFormValues,
+} from "@/features/trips/TripLanguageFields";
+import { getPresetForLanguageSettings } from "@/features/trips/tripLanguagePresets";
+import {
   formatTripPeriod,
   getTripDayCount,
   getTripStatus,
@@ -74,6 +79,26 @@ const statusBadgeClasses: Record<TripStatus, string> = {
   past: "border-pink-200 bg-pink-50 text-pink-700",
 };
 
+function optionalText(value: string) {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function getLanguageValuesFromTrip(trip: Trip): TripLanguageFormValues {
+  return {
+    presetId: getPresetForLanguageSettings({
+      countryCode: trip.countryCode,
+      languageCode: trip.languageCode,
+      languageName: trip.languageName,
+      nativeLanguageName: trip.nativeLanguageName,
+    }),
+    countryCode: trip.countryCode ?? "",
+    languageCode: trip.languageCode ?? "",
+    languageName: trip.languageName ?? "",
+    nativeLanguageName: trip.nativeLanguageName ?? "",
+  };
+}
+
 export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
   const { user } = useAuth();
   const { trip, isLoading, errorMessage } = useTripLookup(tripId);
@@ -87,6 +112,13 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [languageValues, setLanguageValues] = useState<TripLanguageFormValues>({
+    presetId: "none",
+    countryCode: "",
+    languageCode: "",
+    languageName: "",
+    nativeLanguageName: "",
+  });
   const [errors, setErrors] = useState<TripFormErrors>({});
   const currentTrip = editedTrip ?? trip;
   const canEditTrip = canEditTripContent(currentMember?.role);
@@ -140,7 +172,9 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
       },
       {
         title: "Taal",
-        description: "Bewaar handige zinnen voor onderweg.",
+        description: currentTrip?.languageName
+          ? `Handige ${currentTrip.languageName.toLocaleLowerCase("nl-NL")}e zinnen.`
+          : "Handige zinnen voor onderweg.",
         icon: Languages,
         href: currentTrip ? `/trips/${currentTrip.id}/language` : undefined,
         accentClassName: "bg-lime-50 text-lime-700",
@@ -195,6 +229,7 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
     setDescription(activeTrip.description ?? "");
     setStartDate(activeTrip.startDate);
     setEndDate(activeTrip.endDate);
+    setLanguageValues(getLanguageValuesFromTrip(activeTrip));
     setErrors({});
     setSaveErrorMessage(null);
     setIsEditDialogOpen(true);
@@ -247,6 +282,10 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         description: description.trim() || undefined,
         startDate,
         endDate,
+        countryCode: optionalText(languageValues.countryCode),
+        languageCode: optionalText(languageValues.languageCode),
+        languageName: optionalText(languageValues.languageName),
+        nativeLanguageName: optionalText(languageValues.nativeLanguageName),
       });
 
       setEditedTrip({
@@ -256,6 +295,10 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         description: description.trim() || undefined,
         startDate,
         endDate,
+        countryCode: optionalText(languageValues.countryCode),
+        languageCode: optionalText(languageValues.languageCode),
+        languageName: optionalText(languageValues.languageName),
+        nativeLanguageName: optionalText(languageValues.nativeLanguageName),
         updatedAt: new Date(),
       });
       closeEditDialog();
@@ -484,6 +527,10 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
                 onChange={(event) => setDescription(event.target.value)}
               />
             </div>
+            <TripLanguageFields
+              values={languageValues}
+              onChange={setLanguageValues}
+            />
             <DialogFooter>
               <Button
                 type="button"

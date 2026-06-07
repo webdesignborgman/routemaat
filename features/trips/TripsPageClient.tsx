@@ -30,6 +30,10 @@ import {
 } from "@/features/trips/tripService";
 import { canManageMembers } from "@/features/members/memberPermissions";
 import { TripCard } from "@/features/trips/TripCard";
+import {
+  TripLanguageFields,
+  type TripLanguageFormValues,
+} from "@/features/trips/TripLanguageFields";
 import type { Trip } from "@/features/trips/tripTypes";
 
 type TripFormErrors = {
@@ -39,8 +43,21 @@ type TripFormErrors = {
   endDate?: string;
 };
 
+const emptyLanguageValues: TripLanguageFormValues = {
+  presetId: "none",
+  countryCode: "",
+  languageCode: "",
+  languageName: "",
+  nativeLanguageName: "",
+};
+
 function defaultDateValue() {
   return getTodayDateString();
+}
+
+function optionalText(value: string) {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 export function TripsPageClient() {
@@ -62,6 +79,8 @@ export function TripsPageClient() {
   const [startDate, setStartDate] = useState(defaultDateValue);
   const [endDate, setEndDate] = useState(defaultDateValue);
   const [description, setDescription] = useState("");
+  const [languageValues, setLanguageValues] =
+    useState<TripLanguageFormValues>(emptyLanguageValues);
   const [errors, setErrors] = useState<TripFormErrors>({});
 
   useEffect(() => {
@@ -128,6 +147,7 @@ export function TripsPageClient() {
     setStartDate(defaultDateValue());
     setEndDate(defaultDateValue());
     setDescription("");
+    setLanguageValues(emptyLanguageValues);
     setErrors({});
   }
 
@@ -190,6 +210,10 @@ export function TripsPageClient() {
           description: description.trim() || undefined,
           startDate,
           endDate,
+          countryCode: optionalText(languageValues.countryCode),
+          languageCode: optionalText(languageValues.languageCode),
+          languageName: optionalText(languageValues.languageName),
+          nativeLanguageName: optionalText(languageValues.nativeLanguageName),
         },
         user
       );
@@ -414,6 +438,10 @@ export function TripsPageClient() {
                 placeholder="Wat willen jullie verzamelen of onthouden?"
               />
             </div>
+            <TripLanguageFields
+              values={languageValues}
+              onChange={setLanguageValues}
+            />
             <DialogFooter>
               <Button
                 type="button"

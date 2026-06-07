@@ -16,6 +16,10 @@ export type Trip = {
   createdBy: string;
   memberIds: string[];
   memberCount?: number;
+  countryCode?: string;
+  languageCode?: string;
+  languageName?: string;
+  nativeLanguageName?: string;
   currentUserRole?: MemberTripRole;
   createdAt: Date;
   updatedAt: Date;
@@ -27,6 +31,10 @@ export type CreateTripInput = {
   description?: string;
   startDate: string;
   endDate: string;
+  countryCode?: string;
+  languageCode?: string;
+  languageName?: string;
+  nativeLanguageName?: string;
 };
 
 export type UpdateTripInput = Partial<CreateTripInput>;

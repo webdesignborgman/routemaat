@@ -24,6 +24,18 @@ export type TravelPhrase = {
   updatedAt: Date;
 };
 
+export type CreateTravelPhraseInput = {
+  category: PhraseCategory;
+  dutchText: string;
+  translatedText: string;
+  nativeText?: string;
+  pronunciation?: string;
+  notes?: string;
+  favorite: boolean;
+};
+
+export type UpdateTravelPhraseInput = Partial<CreateTravelPhraseInput>;
+
 export type PhraseFormValues = {
   dutchText: string;
   translatedText: string;

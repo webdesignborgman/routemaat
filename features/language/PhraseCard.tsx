@@ -11,19 +11,22 @@ import type { TravelPhrase } from "@/features/language/languageTypes";
 type PhraseCardProps = {
   phrase: TravelPhrase;
   speechSupported: boolean;
-  onEdit: (phrase: TravelPhrase) => void;
-  onDelete: (phrase: TravelPhrase) => void;
-  onToggleFavorite: (phrase: TravelPhrase) => void;
+  speechLanguage: string;
+  onEdit?: (phrase: TravelPhrase) => void;
+  onDelete?: (phrase: TravelPhrase) => void;
+  onToggleFavorite?: (phrase: TravelPhrase) => void;
 };
 
 export function PhraseCard({
   phrase,
   speechSupported,
+  speechLanguage,
   onEdit,
   onDelete,
   onToggleFavorite,
 }: PhraseCardProps) {
   const speechText = phrase.nativeText ?? phrase.translatedText;
+  const hasActions = Boolean(onEdit || onDelete || onToggleFavorite);
 
   return (
     <article className="rounded-xl border border-cyan-100 bg-white/95 p-4 shadow-[0_14px_35px_rgba(14,165,233,0.10)]">
@@ -65,7 +68,7 @@ export function PhraseCard({
           size="icon"
           className="border-cyan-100 bg-white text-cyan-700"
           disabled={!speechSupported}
-          onClick={() => speakPhrase(speechText)}
+          onClick={() => speakPhrase(speechText, speechLanguage)}
           aria-label="Zin uitspreken"
           title={
             speechSupported
@@ -90,38 +93,46 @@ export function PhraseCard({
         </p>
       ) : null}
 
-      <div className="mt-4 flex flex-col gap-2 border-t border-cyan-100 pt-4 sm:flex-row sm:justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          className="justify-start border-lime-100 bg-lime-50 text-lime-800 hover:bg-lime-100"
-          onClick={() => onToggleFavorite(phrase)}
-        >
-          <Star
-            className={`size-4 ${phrase.favorite ? "fill-current" : ""}`}
-            aria-hidden="true"
-          />
-          {phrase.favorite ? "Favoriet" : "Favoriet maken"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="justify-start"
-          onClick={() => onEdit(phrase)}
-        >
-          <Edit className="size-4" aria-hidden="true" />
-          Bewerken
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="justify-start border-pink-100 text-pink-700 hover:bg-pink-50"
-          onClick={() => onDelete(phrase)}
-        >
-          <Trash2 className="size-4" aria-hidden="true" />
-          Verwijderen
-        </Button>
-      </div>
+      {hasActions ? (
+        <div className="mt-4 flex flex-col gap-2 border-t border-cyan-100 pt-4 sm:flex-row sm:justify-end">
+          {onToggleFavorite ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="justify-start border-lime-100 bg-lime-50 text-lime-800 hover:bg-lime-100"
+              onClick={() => onToggleFavorite(phrase)}
+            >
+              <Star
+                className={`size-4 ${phrase.favorite ? "fill-current" : ""}`}
+                aria-hidden="true"
+              />
+              {phrase.favorite ? "Favoriet" : "Favoriet maken"}
+            </Button>
+          ) : null}
+          {onEdit ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="justify-start"
+              onClick={() => onEdit(phrase)}
+            >
+              <Edit className="size-4" aria-hidden="true" />
+              Bewerken
+            </Button>
+          ) : null}
+          {onDelete ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="justify-start border-pink-100 text-pink-700 hover:bg-pink-50"
+              onClick={() => onDelete(phrase)}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+              Verwijderen
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 }

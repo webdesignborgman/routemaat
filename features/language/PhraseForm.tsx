@@ -25,6 +25,7 @@ import type {
 
 type PhraseFormProps = {
   phrase?: TravelPhrase;
+  isSubmitting?: boolean;
   onSubmit: (values: PhraseFormValues) => void;
   onCancel: () => void;
 };
@@ -47,7 +48,12 @@ function getInitialValues(phrase?: TravelPhrase): PhraseFormValues {
   };
 }
 
-export function PhraseForm({ phrase, onSubmit, onCancel }: PhraseFormProps) {
+export function PhraseForm({
+  phrase,
+  isSubmitting = false,
+  onSubmit,
+  onCancel,
+}: PhraseFormProps) {
   const initialValues = useMemo(() => getInitialValues(phrase), [phrase]);
   const [values, setValues] = useState<PhraseFormValues>(initialValues);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -191,15 +197,17 @@ export function PhraseForm({ phrase, onSubmit, onCancel }: PhraseFormProps) {
           type="button"
           variant="outline"
           className="w-full sm:w-auto"
+          disabled={isSubmitting}
           onClick={onCancel}
         >
           Annuleren
         </Button>
         <Button
           type="submit"
+          disabled={isSubmitting}
           className="w-full bg-slate-950 text-white shadow-[0_0_20px_rgba(34,211,238,0.28)] hover:bg-slate-800 sm:w-auto"
         >
-          Opslaan
+          {isSubmitting ? "Opslaan..." : "Opslaan"}
         </Button>
       </div>
     </form>

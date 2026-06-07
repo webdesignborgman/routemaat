@@ -32,6 +32,10 @@ type FirestoreTripCreateData = {
   description?: string;
   startDate: string;
   endDate: string;
+  countryCode?: string;
+  languageCode?: string;
+  languageName?: string;
+  nativeLanguageName?: string;
   createdBy: string;
   createdAt: FieldValue;
   updatedAt: FieldValue;
@@ -48,6 +52,10 @@ type FirestoreTripUpdateData = {
   description?: string | FieldValue;
   startDate?: string;
   endDate?: string;
+  countryCode?: string | FieldValue;
+  languageCode?: string | FieldValue;
+  languageName?: string | FieldValue;
+  nativeLanguageName?: string | FieldValue;
   updatedAt: FieldValue;
 };
 
@@ -104,6 +112,10 @@ function tripMembersCollectionRef(tripId: string) {
 
 function tripIdeasCollectionRef(tripId: string) {
   return collection(getRequiredDb(), "trips", tripId, "ideas");
+}
+
+function tripPhrasesCollectionRef(tripId: string) {
+  return collection(getRequiredDb(), "trips", tripId, "phrases");
 }
 
 function tripInvitesCollectionRef(tripId: string) {
@@ -214,6 +226,10 @@ export function mapTripDocToTrip(
     endDate: readString(data, "endDate"),
     createdBy,
     memberIds: memberIds.length > 0 ? memberIds : createdBy ? [createdBy] : [],
+    countryCode: readOptionalString(data, "countryCode"),
+    languageCode: readOptionalString(data, "languageCode"),
+    languageName: readOptionalString(data, "languageName"),
+    nativeLanguageName: readOptionalString(data, "nativeLanguageName"),
     createdAt: readDate(data.createdAt),
     updatedAt: readDate(data.updatedAt),
   };
@@ -254,6 +270,22 @@ export function mapCreateTripInputToFirestoreData(
     data.description = input.description;
   }
 
+  if (input.countryCode) {
+    data.countryCode = input.countryCode;
+  }
+
+  if (input.languageCode) {
+    data.languageCode = input.languageCode;
+  }
+
+  if (input.languageName) {
+    data.languageName = input.languageName;
+  }
+
+  if (input.nativeLanguageName) {
+    data.nativeLanguageName = input.nativeLanguageName;
+  }
+
   return data;
 }
 
@@ -270,6 +302,22 @@ export function mapUpdateTripInputToFirestoreData(
 
   if (Object.prototype.hasOwnProperty.call(input, "description")) {
     data.description = input.description || deleteField();
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "countryCode")) {
+    data.countryCode = input.countryCode || deleteField();
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "languageCode")) {
+    data.languageCode = input.languageCode || deleteField();
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "languageName")) {
+    data.languageName = input.languageName || deleteField();
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "nativeLanguageName")) {
+    data.nativeLanguageName = input.nativeLanguageName || deleteField();
   }
 
   return data;
@@ -429,6 +477,7 @@ export async function deleteTrip(tripId: string): Promise<void> {
   const database = getRequiredDb();
   const membersSnapshot = await getDocs(tripMembersCollectionRef(tripId));
   const ideasSnapshot = await getDocs(tripIdeasCollectionRef(tripId));
+  const phrasesSnapshot = await getDocs(tripPhrasesCollectionRef(tripId));
   const invitesSnapshot = await getDocs(tripInvitesCollectionRef(tripId));
   const refsToDelete: DocumentReference<DocumentData>[] = [
     ...membersSnapshot.docs.map((snapshot) => snapshot.ref),
@@ -436,6 +485,7 @@ export async function deleteTrip(tripId: string): Promise<void> {
       tripMembershipDocRef(snapshot.id, tripId)
     ),
     ...ideasSnapshot.docs.map((snapshot) => snapshot.ref),
+    ...phrasesSnapshot.docs.map((snapshot) => snapshot.ref),
     ...invitesSnapshot.docs.map((snapshot) => snapshot.ref),
     tripDocRef(tripId),
   ];
