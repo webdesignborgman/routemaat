@@ -2,33 +2,61 @@
 
 import { useEffect, useState } from "react";
 
-import { loadStoredTrips } from "@/features/trips/tripClientStorage";
-import { getTripById } from "@/features/trips/tripMockData";
+import { getTripById } from "@/features/trips/tripService";
 import type { Trip } from "@/features/trips/tripTypes";
 
 export type TripLookupState = {
   trip: Trip | null;
   isLoading: boolean;
+  errorMessage: string | null;
 };
 
 export function useTripLookup(tripId: string): TripLookupState {
-  const mockTrip = getTripById(tripId) ?? null;
-  const [storedTrip, setStoredTrip] = useState<Trip | null>(null);
-  const [checkedTripId, setCheckedTripId] = useState<string | null>(null);
+  const [trip, setTrip] = useState<Trip | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setStoredTrip(loadStoredTrips().find((trip) => trip.id === tripId) ?? null);
-      setCheckedTripId(tripId);
-    }, 0);
+    let isCancelled = false;
 
-    return () => window.clearTimeout(timeoutId);
+    async function loadTrip() {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const loadedTrip = await getTripById(tripId);
+
+        if (!isCancelled) {
+          setTrip(loadedTrip);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setErrorMessage(getErrorMessage(error));
+          setTrip(null);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadTrip();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [tripId]);
 
-  const matchingStoredTrip = storedTrip?.id === tripId ? storedTrip : null;
-
   return {
-    trip: matchingStoredTrip ?? mockTrip,
-    isLoading: !mockTrip && checkedTripId !== tripId,
+    trip,
+    isLoading,
+    errorMessage,
   };
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "Er ging iets mis. Probeer het opnieuw.";
 }

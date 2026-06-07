@@ -24,7 +24,6 @@ import { IdeaForm } from "@/features/ideas/IdeaForm";
 import {
   createIdeaForTrip,
   deleteIdeaForTrip,
-  ensureTripDocumentsForIdeaWrites,
   listIdeasForTrip,
   updateIdeaForTrip,
 } from "@/features/ideas/ideaService";
@@ -193,9 +192,6 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
           )
         );
       } else {
-        await withFirestoreTimeout(
-          ensureTripDocumentsForIdeaWrites(trip, user.uid)
-        );
         await withFirestoreTimeout(
           createIdeaForTrip(trip.id, createIdeaInputFromForm(values), user.uid)
         );

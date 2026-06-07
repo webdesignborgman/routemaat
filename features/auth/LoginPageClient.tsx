@@ -34,6 +34,24 @@ export function LoginPageClient() {
     }
   }
 
+  async function handleSwitchAccount() {
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      await signInWithGoogle();
+      router.push("/trips");
+    } catch (signInError) {
+      const message =
+        signInError instanceof Error
+          ? signInError.message
+          : "Van account wisselen is mislukt. Probeer het opnieuw.";
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <section className="flex flex-1 items-center py-8 sm:py-14">
       <div className="mx-auto w-full max-w-lg">
@@ -71,6 +89,23 @@ export function LoginPageClient() {
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </Link>
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-cyan-100 bg-white"
+                  disabled={isSubmitting}
+                  onClick={handleSwitchAccount}
+                >
+                  <LogIn className="size-4" aria-hidden="true" />
+                  {isSubmitting
+                    ? "Account wisselen..."
+                    : "Ander account gebruiken"}
+                </Button>
+                {error ? (
+                  <div className="rounded-xl border border-pink-100 bg-pink-50 px-4 py-3 text-sm leading-6 text-pink-800">
+                    {error}
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="space-y-4">

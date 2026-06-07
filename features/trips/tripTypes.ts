@@ -19,3 +19,22 @@ export type Trip = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type TripMember = {
+  userId: string;
+  role: TripRole;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+  joinedAt: Date;
+};
+
+export type CreateTripInput = {
+  title: string;
+  destination: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+};
+
+export type UpdateTripInput = Partial<CreateTripInput>;

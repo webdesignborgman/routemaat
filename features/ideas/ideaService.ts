@@ -9,7 +9,6 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  setDoc,
   Timestamp,
   updateDoc,
   type DocumentData,
@@ -30,30 +29,10 @@ import type {
   TripIdea,
   UpdateTripIdeaInput,
 } from "@/features/ideas/ideaTypes";
-import type { TripRole } from "@/features/trips/tripTypes";
-import type { Trip } from "@/features/trips/tripTypes";
 import { db } from "@/lib/firebase";
 
 type FirestoreIdeaWriteValue = string | string[] | boolean | Timestamp | FieldValue;
 type FirestoreIdeaWriteData = Record<string, FirestoreIdeaWriteValue>;
-type FirestoreTripSeedData = {
-  title: string;
-  destination: string;
-  description?: string;
-  startDate: string;
-  endDate: string;
-  createdBy: string;
-  memberIds: string[];
-  createdAt: Timestamp;
-  updatedAt: FieldValue;
-};
-type FirestoreTripMemberSeedData = {
-  userId: string;
-  tripId: string;
-  role: TripRole;
-  createdAt: FieldValue;
-  updatedAt: FieldValue;
-};
 
 const optionalTextFields = [
   "city",
@@ -81,14 +60,6 @@ function ideasCollectionRef(tripId: string) {
 
 function ideaDocRef(tripId: string, ideaId: string) {
   return doc(getRequiredDb(), "trips", tripId, "ideas", ideaId);
-}
-
-function tripDocRef(tripId: string) {
-  return doc(getRequiredDb(), "trips", tripId);
-}
-
-function tripMemberDocRef(tripId: string, userId: string) {
-  return doc(getRequiredDb(), "trips", tripId, "members", userId);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -356,48 +327,6 @@ export async function createIdeaForTrip(
   );
 
   return docRef.id;
-}
-
-export async function ensureTripDocumentsForIdeaWrites(
-  trip: Trip,
-  userId: string
-): Promise<void> {
-  const tripRef = tripDocRef(trip.id);
-  const tripSnapshot = await getDoc(tripRef);
-
-  if (!tripSnapshot.exists()) {
-    const tripData: FirestoreTripSeedData = {
-      title: trip.title,
-      destination: trip.destination,
-      startDate: trip.startDate,
-      endDate: trip.endDate,
-      createdBy: userId,
-      memberIds: [userId],
-      createdAt: Timestamp.fromDate(trip.createdAt),
-      updatedAt: serverTimestamp(),
-    };
-
-    if (trip.description) {
-      tripData.description = trip.description;
-    }
-
-    await setDoc(tripRef, tripData);
-  }
-
-  const memberRef = tripMemberDocRef(trip.id, userId);
-  const memberSnapshot = await getDoc(memberRef);
-
-  if (!memberSnapshot.exists()) {
-    const memberData: FirestoreTripMemberSeedData = {
-      userId,
-      tripId: trip.id,
-      role: "owner",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-
-    await setDoc(memberRef, memberData);
-  }
 }
 
 export async function updateIdeaForTrip(

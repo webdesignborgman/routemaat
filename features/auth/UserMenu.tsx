@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, UserCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { LogIn, LogOut, UserCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +20,8 @@ function getUserLabel(displayName?: string | null, email?: string | null) {
 }
 
 export function UserMenu() {
-  const { user, loading, signOutUser } = useAuth();
+  const router = useRouter();
+  const { user, loading, signInWithGoogle, signOutUser } = useAuth();
 
   if (loading) {
     return (
@@ -78,6 +80,19 @@ export function UserMenu() {
           ) : null}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onSelect={() => {
+            void signInWithGoogle()
+              .then(() => router.push("/trips"))
+              .catch((error: unknown) => {
+                console.error("Account wisselen mislukt", error);
+              });
+          }}
+        >
+          <LogIn className="size-4" aria-hidden="true" />
+          Ander account gebruiken
+        </DropdownMenuItem>
         <DropdownMenuItem
           className="cursor-pointer text-pink-700"
           onSelect={() => {

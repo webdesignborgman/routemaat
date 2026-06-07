@@ -1,8 +1,14 @@
-import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
+import {
+  getApp,
+  getApps,
+  initializeApp,
+  type FirebaseApp,
+  type FirebaseOptions,
+} from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
-const firebaseConfig = {
+const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -11,8 +17,14 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-export const isFirebaseConfigured = Object.values(firebaseConfig).every(
-  (value) => typeof value === "string" && value.length > 0
+const requiredFirebaseConfigValues = [
+  firebaseConfig.apiKey,
+  firebaseConfig.authDomain,
+  firebaseConfig.projectId,
+] as const;
+
+export const isFirebaseConfigured = requiredFirebaseConfigValues.every(
+  (value) => typeof value === "string" && value.trim().length > 0
 );
 
 export const firebaseApp: FirebaseApp | null = isFirebaseConfigured

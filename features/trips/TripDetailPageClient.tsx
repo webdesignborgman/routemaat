@@ -34,7 +34,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { upsertStoredTrip } from "@/features/trips/tripClientStorage";
 import {
   formatTripPeriod,
   getTripDayCount,
@@ -42,6 +41,7 @@ import {
   getTripStatusLabel,
   type TripStatus,
 } from "@/features/trips/tripDates";
+import { updateTrip } from "@/features/trips/tripService";
 import type { Trip } from "@/features/trips/tripTypes";
 import { useTripLookup } from "@/features/trips/useTripLookup";
 
@@ -71,9 +71,11 @@ const statusBadgeClasses: Record<TripStatus, string> = {
 };
 
 export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
-  const { trip, isLoading } = useTripLookup(tripId);
+  const { trip, isLoading, errorMessage } = useTripLookup(tripId);
   const [editedTrip, setEditedTrip] = useState<Trip | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [destination, setDestination] = useState("");
   const [description, setDescription] = useState("");
@@ -129,10 +131,14 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         </div>
         <h1 className="text-xl font-semibold text-slate-950">Reis laden</h1>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
-          We zoeken deze reis in de tijdelijke mocklijst.
+          We halen deze reis op uit Firestore.
         </p>
       </section>
     );
+  }
+
+  if (errorMessage) {
+    return <TripErrorState message={errorMessage} />;
   }
 
   if (!currentTrip) {
@@ -150,15 +156,17 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
     setStartDate(activeTrip.startDate);
     setEndDate(activeTrip.endDate);
     setErrors({});
+    setSaveErrorMessage(null);
     setIsEditDialogOpen(true);
   }
 
   function closeEditDialog() {
     setIsEditDialogOpen(false);
     setErrors({});
+    setSaveErrorMessage(null);
   }
 
-  function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const trimmedTitle = title.trim();
@@ -189,19 +197,34 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
       return;
     }
 
-    const updatedTrip: Trip = {
-      ...activeTrip,
-      title: trimmedTitle,
-      destination: trimmedDestination,
-      description: description.trim() || undefined,
-      startDate,
-      endDate,
-      updatedAt: new Date(),
-    };
+    setIsSaving(true);
+    setSaveErrorMessage(null);
 
-    upsertStoredTrip(updatedTrip);
-    setEditedTrip(updatedTrip);
-    closeEditDialog();
+    try {
+      await updateTrip(activeTrip.id, {
+        title: trimmedTitle,
+        destination: trimmedDestination,
+        description: description.trim() || undefined,
+        startDate,
+        endDate,
+      });
+
+      setEditedTrip({
+        ...activeTrip,
+        title: trimmedTitle,
+        destination: trimmedDestination,
+        description: description.trim() || undefined,
+        startDate,
+        endDate,
+        updatedAt: new Date(),
+      });
+      closeEditDialog();
+    } catch (error) {
+      console.error("Reis bewerken mislukt", error);
+      setSaveErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -310,6 +333,9 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
               Pas de basisgegevens van deze reis aan. De reis-id blijft hetzelfde.
             </DialogDescription>
           </DialogHeader>
+          {saveErrorMessage ? (
+            <InlineErrorMessage message={saveErrorMessage} />
+          ) : null}
 
           <form className="space-y-4" noValidate onSubmit={handleEditSubmit}>
             <div className="grid gap-2">
@@ -423,15 +449,17 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
                 type="button"
                 variant="outline"
                 className="w-full sm:w-auto"
+                disabled={isSaving}
                 onClick={closeEditDialog}
               >
                 Annuleren
               </Button>
               <Button
                 type="submit"
+                disabled={isSaving}
                 className="w-full bg-slate-950 text-white hover:bg-slate-800 sm:w-auto"
               >
-                Opslaan
+                {isSaving ? "Opslaan..." : "Opslaan"}
               </Button>
             </DialogFooter>
           </form>
@@ -514,6 +542,50 @@ function QuickActionCard({ action }: QuickActionCardProps) {
   );
 }
 
+type InlineErrorMessageProps = {
+  message: string;
+};
+
+function InlineErrorMessage({ message }: InlineErrorMessageProps) {
+  return (
+    <div className="rounded-xl border border-pink-100 bg-pink-50 px-4 py-3 text-sm leading-6 text-pink-800">
+      {message}
+    </div>
+  );
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "Er ging iets mis. Probeer het opnieuw.";
+}
+
+type TripErrorStateProps = {
+  message: string;
+};
+
+function TripErrorState({ message }: TripErrorStateProps) {
+  return (
+    <section className="rounded-xl border border-dashed border-cyan-200 bg-white/85 px-5 py-12 text-center shadow-[0_18px_45px_rgba(14,165,233,0.10)]">
+      <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-pink-50 text-pink-600">
+        <Route className="size-5" aria-hidden="true" />
+      </div>
+      <h1 className="text-xl font-semibold text-slate-950">
+        Reis laden lukt niet
+      </h1>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
+        {message}
+      </p>
+      <Button
+        asChild
+        className="mt-6 bg-slate-950 text-white hover:bg-slate-800"
+      >
+        <Link href="/trips">Terug naar reizen</Link>
+      </Button>
+    </section>
+  );
+}
+
 function TripNotFoundState() {
   return (
     <section className="rounded-xl border border-dashed border-cyan-200 bg-white/85 px-5 py-12 text-center shadow-[0_18px_45px_rgba(14,165,233,0.10)]">
@@ -524,7 +596,7 @@ function TripNotFoundState() {
         Reis niet gevonden
       </h1>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
-        Deze reis staat niet in de mockdata of tijdelijke lijst van je browser.
+        Deze reis staat niet in Firestore of je hebt geen toegang.
       </p>
       <Button
         asChild
