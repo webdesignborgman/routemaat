@@ -67,6 +67,10 @@ service cloud.firestore {
       return !data.keys().hasAny([field]) || data[field] is bool;
     }
 
+    function hasOptionalNumber(data, field) {
+      return !data.keys().hasAny([field]) || data[field] is number;
+    }
+
     function hasOptionalList(data, field) {
       return !data.keys().hasAny([field]) || data[field] is list;
     }
@@ -312,6 +316,40 @@ service cloud.firestore {
       ];
     }
 
+    function isValidDocumentCategory(category) {
+      return category in [
+        'hotel',
+        'transport',
+        'ticket',
+        'reservation',
+        'restaurant',
+        'activity',
+        'esim',
+        'insurance',
+        'passport',
+        'practical',
+        'other'
+      ];
+    }
+
+    function isValidDocumentType(type) {
+      return type in ['link', 'note', 'file'];
+    }
+
+    function dateFieldInTripPeriod(data, field, tripId) {
+      return !data.keys().hasAny([field])
+        || (data[field] is string
+          && exists(tripPath(tripId))
+          && data[field] >= get(tripPath(tripId)).data.startDate
+          && data[field] <= get(tripPath(tripId)).data.endDate);
+    }
+
+    function validOptionalTimeField(data, field) {
+      return !data.keys().hasAny([field])
+        || (data[field] is string
+          && data[field].matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'));
+    }
+
     function validPhraseData(data, tripId) {
       return data.keys().hasAll(['dutchText', 'translatedText', 'favorite'])
         && data.dutchText is string
@@ -333,6 +371,46 @@ service cloud.firestore {
 
     function validPhraseUpdate(data, tripId) {
       return validPhraseData(data, tripId)
+        && data.createdBy == resource.data.createdBy;
+    }
+
+    function validDocumentData(data, tripId) {
+      return data.keys().hasAll([
+          'title',
+          'category',
+          'type',
+          'important',
+          'createdBy'
+        ])
+        && data.title is string
+        && isValidDocumentCategory(data.category)
+        && isValidDocumentType(data.type)
+        && data.important is bool
+        && data.createdBy is string
+        && (!data.keys().hasAny(['tripId']) || data.tripId == tripId)
+        && (data.type != 'link' || hasRequiredString(data, 'url'))
+        && hasOptionalString(data, 'url')
+        && hasOptionalString(data, 'description')
+        && hasOptionalString(data, 'notes')
+        && hasOptionalString(data, 'relatedDate')
+        && dateFieldInTripPeriod(data, 'relatedDate', tripId)
+        && hasOptionalString(data, 'relatedTime')
+        && validOptionalTimeField(data, 'relatedTime')
+        && hasOptionalString(data, 'fileName')
+        && hasOptionalString(data, 'filePath')
+        && hasOptionalString(data, 'fileContentType')
+        && hasOptionalNumber(data, 'fileSize')
+        && hasOptionalString(data, 'downloadUrl');
+    }
+
+    function validDocumentCreate(data, tripId) {
+      return validDocumentData(data, tripId)
+        && data.keys().hasAll(['tripId'])
+        && data.createdBy == request.auth.uid;
+    }
+
+    function validDocumentUpdate(data, tripId) {
+      return validDocumentData(data, tripId)
         && data.createdBy == resource.data.createdBy;
     }
 
@@ -453,6 +531,15 @@ service cloud.firestore {
           && validPhraseCreate(request.resource.data, tripId);
         allow update: if canEditTripContent(tripId)
           && validPhraseUpdate(request.resource.data, tripId);
+        allow delete: if canEditTripContent(tripId);
+      }
+
+      match /documents/{documentId} {
+        allow read: if canReadTrip(tripId);
+        allow create: if canEditTripContent(tripId)
+          && validDocumentCreate(request.resource.data, tripId);
+        allow update: if canEditTripContent(tripId)
+          && validDocumentUpdate(request.resource.data, tripId);
         allow delete: if canEditTripContent(tripId);
       }
     }

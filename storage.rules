@@ -1,0 +1,71 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function memberPath(tripId) {
+      return /databases/(default)/documents/trips/$(tripId)/members/$(request.auth.uid);
+    }
+
+    function tripPath(tripId) {
+      return /databases/(default)/documents/trips/$(tripId);
+    }
+
+    function isTripMember(tripId) {
+      return signedIn() && firestore.exists(memberPath(tripId));
+    }
+
+    function isTripCreator(tripId) {
+      return signedIn()
+        && firestore.exists(tripPath(tripId))
+        && firestore.get(tripPath(tripId)).data.createdBy == request.auth.uid;
+    }
+
+    function memberRole(tripId) {
+      return firestore.get(memberPath(tripId)).data.role;
+    }
+
+    function canReadTripFiles(tripId) {
+      return isTripMember(tripId) || isTripCreator(tripId);
+    }
+
+    function canWriteTripFiles(tripId) {
+      return isTripCreator(tripId)
+        || (isTripMember(tripId)
+          && memberRole(tripId) in ['owner', 'admin', 'editor']);
+    }
+
+    function isSupportedContentType(contentType) {
+      return contentType in [
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'text/plain',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      ];
+    }
+
+    function isValidDocumentFile() {
+      return request.resource != null
+        && request.resource.size < 10 * 1024 * 1024
+        && isSupportedContentType(request.resource.contentType);
+    }
+
+    match /trips/{tripId}/documents/{documentId}/{fileName} {
+      allow read: if canReadTripFiles(tripId);
+      allow create, update: if canWriteTripFiles(tripId)
+        && isValidDocumentFile();
+      allow delete: if canWriteTripFiles(tripId);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

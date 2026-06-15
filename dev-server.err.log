@@ -37,3 +37,15 @@ For help, see: https://nodejs.org/en/docs/inspector
 ⚠ Fast Refresh had to perform a full reload when ./features/members/memberService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
 ⚠ Fast Refresh had to perform a full reload when ./features/members/memberService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
 ⚠ Fast Refresh had to perform a full reload when ./features/auth/AuthProvider.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./lib/firebase.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./lib/firebase.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[browser] Document opslaan mislukt FirebaseError: Firebase Storage: User does not have permission to access 'trips/japan-2028-2/documents/Xrs0VUtpnbCs6ZzrIvs2/Denise-1781557715766-0uuv58.jpeg'. (storage/unauthorized)
+FirebaseError: Firebase Storage: User does not have permission to access 'trips/japan-2028-2/documents/Xrs0VUtpnbCs6ZzrIvs2/Denise-1781557715766-0uuv58.jpeg'. (storage/unauthorized) (features/documents/DocumentsPageClient.tsx:269:15)
+[browser] Document opslaan mislukt FirebaseError: Firebase Storage: User does not have permission to access 'trips/japan-2028-2/documents/BMYNgbjx0LCqJ1jNOPsF/Denise-1781557865434-gr20os.jpeg'. (storage/unauthorized)
+FirebaseError: Firebase Storage: User does not have permission to access 'trips/japan-2028-2/documents/BMYNgbjx0LCqJ1jNOPsF/Denise-1781557865434-gr20os.jpeg'. (storage/unauthorized) (features/documents/DocumentsPageClient.tsx:269:15)
+[browser] Document opslaan mislukt FirebaseError: Firebase Storage: User does not have permission to access 'trips/japan-2028-2/documents/RuPqodtEAtDrVynNnE34/Denise-1781557934329-ohagcq.jpeg'. (storage/unauthorized)
+FirebaseError: Firebase Storage: User does not have permission to access 'trips/japan-2028-2/documents/RuPqodtEAtDrVynNnE34/Denise-1781557934329-ohagcq.jpeg'. (storage/unauthorized) (features/documents/DocumentsPageClient.tsx:269:15)
+[browser] Document opslaan mislukt FirebaseError: Firebase Storage: User does not have permission to access 'trips/japan-2028-2/documents/u7JS9zxUzukfbimbrRUb/Denise-1781558201081-zno9ot.jpeg'. (storage/unauthorized)
+FirebaseError: Firebase Storage: User does not have permission to access 'trips/japan-2028-2/documents/u7JS9zxUzukfbimbrRUb/Denise-1781558201081-zno9ot.jpeg'. (storage/unauthorized) (features/documents/DocumentsPageClient.tsx:269:15)
+[browser] Document opslaan mislukt FirebaseError: Firebase Storage: User does not have permission to access 'trips/japan-2028-2/documents/mqgV4pBvP0xngbaSTas2/Denise-1781558206447-bap91e.jpeg'. (storage/unauthorized)
+FirebaseError: Firebase Storage: User does not have permission to access 'trips/japan-2028-2/documents/mqgV4pBvP0xngbaSTas2/Denise-1781558206447-bap91e.jpeg'. (storage/unauthorized) (features/documents/DocumentsPageClient.tsx:269:15)

@@ -181,8 +181,9 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
       },
       {
         title: "Documenten",
-        description: "Binnenkort beschikbaar.",
+        description: "Bewaar links, boekingen en belangrijke reisinfo.",
         icon: FileText,
+        href: currentTrip ? `/trips/${currentTrip.id}/documents` : undefined,
         accentClassName: "bg-lime-50 text-lime-700",
       },
       {
