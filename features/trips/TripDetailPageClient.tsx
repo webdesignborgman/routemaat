@@ -642,9 +642,21 @@ function InlineErrorMessage({ message }: InlineErrorMessageProps) {
 }
 
 function getErrorMessage(error: unknown) {
+  if (isFirebasePermissionError(error)) {
+    return "Je hebt geen rechten om deze reis aan te passen.";
+  }
+
   return error instanceof Error
     ? error.message
     : "Er ging iets mis. Probeer het opnieuw.";
+}
+
+function isFirebasePermissionError(error: unknown) {
+  return isRecord(error) && error.code === "permission-denied";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 type TripErrorStateProps = {

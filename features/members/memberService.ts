@@ -1,9 +1,6 @@
 import {
-  addDoc,
   arrayRemove,
-  arrayUnion,
   collection,
-  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -41,6 +38,7 @@ type FirestoreTripMemberData = {
   displayName: string | null;
   email: string | null;
   photoURL: string | null;
+  inviteId?: string;
   joinedAt: FieldValue;
 };
 
@@ -61,10 +59,6 @@ function getRequiredDb() {
   }
 
   return db;
-}
-
-function usersCollectionRef() {
-  return collection(getRequiredDb(), "users");
 }
 
 function userDocRef(userId: string) {
@@ -89,6 +83,14 @@ function tripInvitesCollectionRef(tripId: string) {
 
 function tripInviteDocRef(tripId: string, inviteId: string) {
   return doc(getRequiredDb(), "trips", tripId, "invites", inviteId);
+}
+
+function pendingInvitesCollectionRef() {
+  return collection(getRequiredDb(), "pendingInvites");
+}
+
+function pendingInviteDocRef(inviteId: string) {
+  return doc(getRequiredDb(), "pendingInvites", inviteId);
 }
 
 function tripMembershipDocRef(userId: string, tripId: string) {
@@ -211,28 +213,35 @@ function mapInviteDocToTripInvite(
 
 function mapMemberToFirestoreData(
   userProfile: UserProfile,
-  role: TripRole
+  role: TripRole,
+  inviteId?: string
 ): FirestoreTripMemberData {
-  return {
+  const data: FirestoreTripMemberData = {
     role,
     displayName: userProfile.displayName,
     email: userProfile.email,
     photoURL: userProfile.photoURL,
     joinedAt: serverTimestamp(),
   };
+
+  if (inviteId) {
+    data.inviteId = inviteId;
+  }
+
+  return data;
 }
 
-function mapMembershipToFirestoreData(
-  trip: Trip,
+function mapAcceptedInviteMembershipToFirestoreData(
+  tripId: string,
   role: TripRole
 ): FirestoreTripMembershipData {
   return {
-    tripId: trip.id,
+    tripId,
     role,
-    title: trip.title,
-    destination: trip.destination,
-    startDate: trip.startDate,
-    endDate: trip.endDate,
+    title: "",
+    destination: "",
+    startDate: "",
+    endDate: "",
     joinedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -255,26 +264,6 @@ async function getTripOrThrow(tripId: string) {
   }
 
   return trip;
-}
-
-async function findUserByEmail(email: string): Promise<UserProfile | null> {
-  const usersQuery = query(usersCollectionRef(), where("email", "==", normalizeEmail(email)));
-  const snapshot = await getDocs(usersQuery);
-  const userSnapshot = snapshot.docs[0];
-
-  if (!userSnapshot) {
-    return null;
-  }
-
-  const rawData: unknown = userSnapshot.data();
-  const data = isRecord(rawData) ? rawData : {};
-
-  return {
-    uid: userSnapshot.id,
-    displayName: readNullableString(data, "displayName"),
-    email: readNullableString(data, "email"),
-    photoURL: readNullableString(data, "photoURL"),
-  };
 }
 
 export async function upsertUserProfile(user: AuthUser): Promise<void> {
@@ -328,11 +317,34 @@ export async function listPendingTripInvites(
   );
   const snapshot = await getDocs(invitesQuery);
 
-  return snapshot.docs
+  const invites = snapshot.docs
     .map((inviteSnapshot) => mapInviteDocToTripInvite(inviteSnapshot, tripId))
     .sort((firstInvite, secondInvite) =>
       firstInvite.email.localeCompare(secondInvite.email, "nl-NL")
     );
+
+  if (invites.length > 0) {
+    const batch = writeBatch(getRequiredDb());
+
+    for (const invite of invites) {
+      batch.set(
+        pendingInviteDocRef(invite.id),
+        {
+          tripId: invite.tripId,
+          email: invite.email,
+          role: invite.role,
+          status: invite.status,
+          invitedBy: invite.invitedBy,
+          createdAt: invite.createdAt,
+        },
+        { merge: true }
+      );
+    }
+
+    await batch.commit();
+  }
+
+  return invites;
 }
 
 export async function getTripMember(
@@ -370,33 +382,43 @@ export async function addMemberByEmail(
   currentUser: AuthUser
 ): Promise<"added" | "invited"> {
   const normalizedEmail = normalizeEmail(email);
-  const trip = await getTripOrThrow(tripId);
-  const userProfile = await findUserByEmail(normalizedEmail);
+  await getTripOrThrow(tripId);
+  const membersSnapshot = await getDocs(tripMembersCollectionRef(tripId));
+  const isAlreadyMember = membersSnapshot.docs.some((memberSnapshot) => {
+    const rawData: unknown = memberSnapshot.data();
+    const data = isRecord(rawData) ? rawData : {};
+    const memberEmail = readNullableString(data, "email");
 
-  if (!userProfile) {
-    await addDoc(tripInvitesCollectionRef(tripId), {
-      email: normalizedEmail,
-      role,
-      status: "pending",
-      invitedBy: currentUser.uid,
-      createdAt: serverTimestamp(),
-    });
+    return memberEmail ? normalizeEmail(memberEmail) === normalizedEmail : false;
+  });
 
-    return "invited";
+  if (isAlreadyMember) {
+    return "added";
   }
 
+  const inviteRef = doc(tripInvitesCollectionRef(tripId));
+  const pendingInviteData = {
+    tripId,
+    email: normalizedEmail,
+    role,
+    status: "pending",
+    invitedBy: currentUser.uid,
+    createdAt: serverTimestamp(),
+  } satisfies Omit<TripInvite, "id" | "createdAt"> & { createdAt: FieldValue };
   const batch = writeBatch(getRequiredDb());
 
-  batch.set(tripMemberDocRef(tripId, userProfile.uid), mapMemberToFirestoreData(userProfile, role));
-  batch.set(tripMembershipDocRef(userProfile.uid, tripId), mapMembershipToFirestoreData(trip, role));
-  batch.update(tripDocRef(tripId), {
-    memberIds: arrayUnion(userProfile.uid),
-    updatedAt: serverTimestamp(),
+  batch.set(inviteRef, {
+    email: pendingInviteData.email,
+    role: pendingInviteData.role,
+    status: pendingInviteData.status,
+    invitedBy: pendingInviteData.invitedBy,
+    createdAt: pendingInviteData.createdAt,
   });
+  batch.set(pendingInviteDocRef(inviteRef.id), pendingInviteData);
 
   await batch.commit();
 
-  return "added";
+  return "invited";
 }
 
 export async function updateTripMemberRole(
@@ -438,6 +460,7 @@ export async function cancelTripInvite(
   const batch = writeBatch(getRequiredDb());
 
   batch.delete(tripInviteDocRef(tripId, inviteId));
+  batch.delete(pendingInviteDocRef(inviteId));
   batch.update(tripDocRef(tripId), { updatedAt: serverTimestamp() });
 
   await batch.commit();
@@ -451,35 +474,36 @@ export async function acceptPendingInvitesForUser(user: AuthUser): Promise<void>
   await upsertUserProfile(user);
 
   const invitesQuery = query(
-    collectionGroup(getRequiredDb(), "invites"),
+    pendingInvitesCollectionRef(),
     where("email", "==", normalizeEmail(user.email)),
     where("status", "==", "pending")
   );
   const snapshot = await getDocs(invitesQuery);
 
   for (const inviteSnapshot of snapshot.docs) {
-    const tripRef = inviteSnapshot.ref.parent.parent;
+    const rawData: unknown = inviteSnapshot.data();
+    const data = isRecord(rawData) ? rawData : {};
+    const tripId = readString(data, "tripId");
 
-    if (!tripRef) {
+    if (!tripId) {
       continue;
     }
 
-    const invite = mapInviteDocToTripInvite(inviteSnapshot, tripRef.id);
-    const trip = await getTripOrThrow(tripRef.id);
+    const invite = mapInviteDocToTripInvite(inviteSnapshot, tripId);
     const profile = userToProfile(user);
     const batch = writeBatch(getRequiredDb());
 
     batch.set(
-      tripMemberDocRef(trip.id, user.uid),
-      mapMemberToFirestoreData(profile, invite.role)
+      tripMemberDocRef(invite.tripId, user.uid),
+      mapMemberToFirestoreData(profile, invite.role, invite.id)
     );
     batch.set(
-      tripMembershipDocRef(user.uid, trip.id),
-      mapMembershipToFirestoreData(trip, invite.role)
+      tripMembershipDocRef(user.uid, invite.tripId),
+      mapAcceptedInviteMembershipToFirestoreData(invite.tripId, invite.role)
     );
-    batch.update(tripDocRef(trip.id), {
-      memberIds: arrayUnion(user.uid),
-      updatedAt: serverTimestamp(),
+    batch.update(tripInviteDocRef(invite.tripId, invite.id), {
+      status: "accepted",
+      acceptedAt: serverTimestamp(),
     });
     batch.update(inviteSnapshot.ref, {
       status: "accepted",

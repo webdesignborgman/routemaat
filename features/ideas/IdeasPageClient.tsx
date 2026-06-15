@@ -464,11 +464,11 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
 
 function getErrorMessage(error: unknown) {
   if (isFirestoreTimeoutError(error)) {
-    return "Firestore reageert niet binnen 15 seconden. Controleer je internetverbinding, Firebase-configuratie of security rules.";
+    return "Firestore reageert niet binnen 15 seconden. Controleer je internetverbinding en probeer het opnieuw.";
   }
 
   if (isFirebasePermissionError(error)) {
-    return "Je hebt nog geen rechten om ideeën in Firestore op te slaan. Controleer de security rules voor trips/{tripId}/ideas.";
+    return "Je hebt geen rechten om ideeën of activiteiten te bekijken of aan te passen.";
   }
 
   return error instanceof Error

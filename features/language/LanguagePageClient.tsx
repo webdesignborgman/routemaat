@@ -711,7 +711,7 @@ function isJapaneseTrip(trip: Trip) {
 
 function getErrorMessage(error: unknown) {
   if (isFirebasePermissionError(error)) {
-    return "Je hebt nog geen rechten om taalzinnen in Firestore op te slaan. Controleer de security rules voor trips/{tripId}/phrases.";
+    return "Je hebt geen rechten om taalzinnen te bekijken of aan te passen.";
   }
 
   return error instanceof Error

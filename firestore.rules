@@ -1,0 +1,464 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function tripPath(tripId) {
+      return /databases/$(database)/documents/trips/$(tripId);
+    }
+
+    function memberPath(tripId, userId) {
+      return /databases/$(database)/documents/trips/$(tripId)/members/$(userId);
+    }
+
+    function currentMemberPath(tripId) {
+      return memberPath(tripId, request.auth.uid);
+    }
+
+    function isValidRole(role) {
+      return role in ['owner', 'admin', 'editor', 'viewer'];
+    }
+
+    function isTripMember(tripId) {
+      return signedIn() && exists(currentMemberPath(tripId));
+    }
+
+    function isTripCreator(tripId) {
+      return signedIn()
+        && exists(tripPath(tripId))
+        && get(tripPath(tripId)).data.createdBy == request.auth.uid;
+    }
+
+    function canReadTrip(tripId) {
+      return isTripMember(tripId) || isTripCreator(tripId);
+    }
+
+    function getTripRole(tripId) {
+      return get(currentMemberPath(tripId)).data.role;
+    }
+
+    function isOwner(tripId) {
+      return isTripCreator(tripId)
+        || (isTripMember(tripId) && getTripRole(tripId) == 'owner');
+    }
+
+    function isAdmin(tripId) {
+      return isTripMember(tripId) && getTripRole(tripId) == 'admin';
+    }
+
+    function canEditTripContent(tripId) {
+      return isOwner(tripId)
+        || (isTripMember(tripId)
+          && getTripRole(tripId) in ['admin', 'editor']);
+    }
+
+    function canManageTripMembers(tripId) {
+      return isOwner(tripId) || isAdmin(tripId);
+    }
+
+    function hasOptionalString(data, field) {
+      return !data.keys().hasAny([field]) || data[field] is string;
+    }
+
+    function hasOptionalBool(data, field) {
+      return !data.keys().hasAny([field]) || data[field] is bool;
+    }
+
+    function hasOptionalList(data, field) {
+      return !data.keys().hasAny([field]) || data[field] is list;
+    }
+
+    function hasOptionalNullableString(data, field) {
+      return !data.keys().hasAny([field])
+        || data[field] == null
+        || data[field] is string;
+    }
+
+    function hasRequiredString(data, field) {
+      return data.keys().hasAny([field]) && data[field] is string;
+    }
+
+    function validTripData(data) {
+      return data.keys().hasAll([
+          'title',
+          'destination',
+          'startDate',
+          'endDate',
+          'createdBy'
+        ])
+        && data.title is string
+        && data.destination is string
+        && data.startDate is string
+        && data.endDate is string
+        && data.createdBy is string
+        && hasOptionalString(data, 'description')
+        && hasOptionalString(data, 'countryCode')
+        && hasOptionalString(data, 'languageCode')
+        && hasOptionalString(data, 'languageName')
+        && hasOptionalString(data, 'nativeLanguageName')
+        && hasOptionalList(data, 'memberIds');
+    }
+
+    function validTripCreate(data) {
+      return validTripData(data)
+        && data.createdBy == request.auth.uid;
+    }
+
+    function validTripUpdate(data) {
+      return validTripData(data)
+        && data.createdBy == resource.data.createdBy;
+    }
+
+    function validMemberData(data) {
+      return data.keys().hasAll(['role'])
+        && isValidRole(data.role)
+        && hasOptionalNullableString(data, 'displayName')
+        && hasOptionalNullableString(data, 'email')
+        && hasOptionalNullableString(data, 'photoURL')
+        && hasOptionalString(data, 'inviteId');
+    }
+
+    function pendingInvitePath(inviteId) {
+      return /databases/$(database)/documents/pendingInvites/$(inviteId);
+    }
+
+    function inviteMatchesSelfAccept(tripId, data) {
+      return hasRequiredString(data, 'inviteId')
+        && exists(pendingInvitePath(data.inviteId))
+        && get(pendingInvitePath(data.inviteId)).data.tripId == tripId
+        && get(pendingInvitePath(data.inviteId)).data.status == 'pending'
+        && get(pendingInvitePath(data.inviteId)).data.email == data.email
+        && get(pendingInvitePath(data.inviteId)).data.email
+          == request.auth.token.email
+        && get(pendingInvitePath(data.inviteId)).data.role == data.role;
+    }
+
+    function canAcceptInviteAsMember(tripId, userId, data) {
+      return signedIn()
+        && request.auth.uid == userId
+        && request.auth.token.email != null
+        && data.role != 'owner'
+        && inviteMatchesSelfAccept(tripId, data);
+    }
+
+    function canAssignMemberRole(tripId, role) {
+      return isOwner(tripId)
+        || (isAdmin(tripId) && role != 'owner');
+    }
+
+    function canChangeMemberRole(tripId, oldRole, newRole) {
+      return isOwner(tripId)
+        || (isAdmin(tripId) && oldRole != 'owner' && newRole != 'owner');
+    }
+
+    function canDeleteMemberWithRole(tripId, userId, role) {
+      return (isOwner(tripId) && role != 'owner')
+        || (isAdmin(tripId) && role != 'owner')
+        || (signedIn() && request.auth.uid == userId && role != 'owner')
+        || (isOwner(tripId) && !existsAfter(tripPath(tripId)));
+    }
+
+    function validMembershipData(data, tripId) {
+      return data.keys().hasAll([
+          'tripId',
+          'role',
+          'title',
+          'destination',
+          'startDate',
+          'endDate'
+        ])
+        && data.tripId == tripId
+        && isValidRole(data.role)
+        && data.title is string
+        && data.destination is string
+        && data.startDate is string
+        && data.endDate is string;
+    }
+
+    function targetMemberAfterMatchesMembership(tripId, userId) {
+      return existsAfter(memberPath(tripId, userId))
+        && getAfter(memberPath(tripId, userId)).data.role
+          == request.resource.data.role;
+    }
+
+    function canWriteMembership(tripId, userId) {
+      return canManageTripMembers(tripId)
+        || (signedIn()
+          && request.auth.uid == userId
+          && targetMemberAfterMatchesMembership(tripId, userId));
+    }
+
+    function inviteEmailMatches(data) {
+      return signedIn()
+        && request.auth.token.email != null
+        && data.email == request.auth.token.email;
+    }
+
+    function validInviteData(data) {
+      return data.keys().hasAll([
+          'email',
+          'role',
+          'status',
+          'invitedBy'
+        ])
+        && data.email is string
+        && isValidRole(data.role)
+        && data.status in ['pending', 'accepted']
+        && data.invitedBy is string;
+    }
+
+    function validPendingInviteData(data) {
+      return validInviteData(data)
+        && data.keys().hasAll(['tripId'])
+        && data.tripId is string;
+    }
+
+    function validInviteCreate(data) {
+      return validInviteData(data)
+        && data.status == 'pending'
+        && data.invitedBy == request.auth.uid;
+    }
+
+    function validInviteAcceptance() {
+      return validInviteData(request.resource.data)
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'accepted'
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.invitedBy == resource.data.invitedBy;
+    }
+
+    function isValidIdeaCategory(category) {
+      return category in [
+        'sightseeing',
+        'restaurant',
+        'hotel',
+        'shop',
+        'activity',
+        'transport',
+        'practical',
+        'language',
+        'custom',
+        'document',
+        'other'
+      ];
+    }
+
+    function isValidIdeaStatus(status) {
+      return status in ['idea', 'maybe', 'planned', 'booked', 'skipped'];
+    }
+
+    function isValidIdeaPriority(priority) {
+      return priority in ['low', 'medium', 'high'];
+    }
+
+    function validIdeaData(data, tripId) {
+      return data.keys().hasAll(['title'])
+        && data.title is string
+        && (!data.keys().hasAny(['tripId']) || data.tripId == tripId)
+        && (!data.keys().hasAny(['category'])
+          || isValidIdeaCategory(data.category))
+        && (!data.keys().hasAny(['status'])
+          || isValidIdeaStatus(data.status))
+        && (!data.keys().hasAny(['priority'])
+          || isValidIdeaPriority(data.priority))
+        && hasOptionalString(data, 'description')
+        && hasOptionalString(data, 'city')
+        && hasOptionalString(data, 'locationName')
+        && hasOptionalString(data, 'googleMapsUrl')
+        && hasOptionalString(data, 'websiteUrl')
+        && hasOptionalString(data, 'customsNotes')
+        && hasOptionalString(data, 'notes')
+        && hasOptionalString(data, 'scheduleDate')
+        && hasOptionalString(data, 'startTime')
+        && hasOptionalString(data, 'endTime')
+        && hasOptionalBool(data, 'showInSchedule')
+        && hasOptionalList(data, 'tags');
+    }
+
+    function validIdeaCreate(data, tripId) {
+      return validIdeaData(data, tripId)
+        && data.keys().hasAll([
+          'tripId',
+          'category',
+          'status',
+          'priority',
+          'tags',
+          'showInSchedule',
+          'addedBy'
+        ])
+        && data.addedBy == request.auth.uid;
+    }
+
+    function validIdeaUpdate(data, tripId) {
+      return validIdeaData(data, tripId)
+        && data.addedBy == resource.data.addedBy;
+    }
+
+    function isValidPhraseCategory(category) {
+      return category in [
+        'general',
+        'restaurant',
+        'hotel',
+        'transport',
+        'temple',
+        'onsen',
+        'shop',
+        'emergency',
+        'custom'
+      ];
+    }
+
+    function validPhraseData(data, tripId) {
+      return data.keys().hasAll(['dutchText', 'translatedText', 'favorite'])
+        && data.dutchText is string
+        && data.translatedText is string
+        && data.favorite is bool
+        && (!data.keys().hasAny(['tripId']) || data.tripId == tripId)
+        && (!data.keys().hasAny(['category'])
+          || isValidPhraseCategory(data.category))
+        && hasOptionalString(data, 'nativeText')
+        && hasOptionalString(data, 'pronunciation')
+        && hasOptionalString(data, 'notes');
+    }
+
+    function validPhraseCreate(data, tripId) {
+      return validPhraseData(data, tripId)
+        && data.keys().hasAll(['tripId', 'category', 'createdBy'])
+        && data.createdBy == request.auth.uid;
+    }
+
+    function validPhraseUpdate(data, tripId) {
+      return validPhraseData(data, tripId)
+        && data.createdBy == resource.data.createdBy;
+    }
+
+    match /users/{userId} {
+      // Userprofielen blijven prive. Direct zoeken in users op e-mail voor
+      // uitnodigen is hiermee niet toegestaan; gebruik daarvoor later een
+      // beperkte service/Cloud Function of een aparte publieke lookup-index.
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && hasOptionalNullableString(request.resource.data, 'displayName')
+        && hasOptionalNullableString(request.resource.data, 'email')
+        && hasOptionalNullableString(request.resource.data, 'photoURL');
+      allow delete: if signedIn() && request.auth.uid == userId;
+
+      match /tripMemberships/{tripId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        // Zelf accepteren mag alleen als dezelfde batch ook een member-doc
+        // maakt die via inviteId naar een pending invite met dezelfde e-mail
+        // en rol wijst.
+        allow create, update: if validMembershipData(request.resource.data, tripId)
+          && canWriteMembership(tripId, userId);
+        allow delete: if canDeleteMemberWithRole(
+          tripId,
+          userId,
+          resource.data.role
+        );
+      }
+    }
+
+    match /pendingInvites/{inviteId} {
+      allow read: if inviteEmailMatches(resource.data);
+      allow create: if validPendingInviteData(request.resource.data)
+        && request.resource.data.status == 'pending'
+        && canManageTripMembers(request.resource.data.tripId);
+      allow update: if (
+          validPendingInviteData(request.resource.data)
+          && canManageTripMembers(resource.data.tripId)
+          && request.resource.data.tripId == resource.data.tripId
+        )
+        || (
+          inviteEmailMatches(resource.data)
+          && validPendingInviteData(request.resource.data)
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'accepted'
+          && request.resource.data.tripId == resource.data.tripId
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.invitedBy == resource.data.invitedBy
+        );
+      allow delete: if canManageTripMembers(resource.data.tripId);
+    }
+
+    match /trips/{tripId} {
+      allow read: if isTripMember(tripId)
+        || (signedIn() && resource.data.createdBy == request.auth.uid);
+      allow create: if signedIn() && validTripCreate(request.resource.data);
+      allow update: if canManageTripMembers(tripId)
+        && validTripUpdate(request.resource.data);
+      allow delete: if isOwner(tripId);
+
+      match /members/{userId} {
+        allow read: if canReadTrip(tripId);
+        allow create: if validMemberData(request.resource.data)
+          && (
+            (canManageTripMembers(tripId)
+              && canAssignMemberRole(tripId, request.resource.data.role))
+            || canAcceptInviteAsMember(
+              tripId,
+              userId,
+              request.resource.data
+            )
+            || (signedIn()
+              && request.auth.uid == userId
+              && request.resource.data.role == 'owner'
+              && existsAfter(tripPath(tripId))
+              && getAfter(tripPath(tripId)).data.createdBy == request.auth.uid)
+          );
+        allow update: if validMemberData(request.resource.data)
+          && canChangeMemberRole(
+            tripId,
+            resource.data.role,
+            request.resource.data.role
+          );
+        allow delete: if canDeleteMemberWithRole(
+          tripId,
+          userId,
+          resource.data.role
+        );
+      }
+
+      match /invites/{inviteId} {
+        // E-mailmatching gebruikt de e-mailclaim uit Firebase Auth exact.
+        // De app slaat e-mails lowercase op; als providers ooit andere casing
+        // leveren, normaliseer dit via app-service of Cloud Function.
+        allow read: if canManageTripMembers(tripId)
+          || inviteEmailMatches(resource.data);
+        allow create: if canManageTripMembers(tripId)
+          && validInviteCreate(request.resource.data);
+        allow update: if (canManageTripMembers(tripId)
+            && validInviteData(request.resource.data))
+          || (inviteEmailMatches(resource.data) && validInviteAcceptance());
+        allow delete: if canManageTripMembers(tripId);
+      }
+
+      match /ideas/{ideaId} {
+        allow read: if canReadTrip(tripId);
+        allow create: if canEditTripContent(tripId)
+          && validIdeaCreate(request.resource.data, tripId);
+        allow update: if canEditTripContent(tripId)
+          && validIdeaUpdate(request.resource.data, tripId);
+        allow delete: if canEditTripContent(tripId);
+      }
+
+      match /phrases/{phraseId} {
+        allow read: if canReadTrip(tripId);
+        allow create: if canEditTripContent(tripId)
+          && validPhraseCreate(request.resource.data, tripId);
+        allow update: if canEditTripContent(tripId)
+          && validPhraseUpdate(request.resource.data, tripId);
+        allow delete: if canEditTripContent(tripId);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

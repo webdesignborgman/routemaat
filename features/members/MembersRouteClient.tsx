@@ -108,12 +108,13 @@ export function MembersRouteClient({ tripId }: MembersRouteClientProps) {
       setError(null);
 
       try {
-        const [loadedMembers, loadedInvites, loadedCurrentMember] =
-          await Promise.all([
-            listTripMembers(trip.id),
-            listPendingTripInvites(trip.id),
-            getTripMember(trip.id, user.uid),
-          ]);
+        const loadedCurrentMember = await getTripMember(trip.id, user.uid);
+        const [loadedMembers, loadedInvites] = await Promise.all([
+          listTripMembers(trip.id),
+          canManageMembers(loadedCurrentMember?.role)
+            ? listPendingTripInvites(trip.id)
+            : Promise.resolve([]),
+        ]);
 
         if (!isCancelled) {
           setMembers(loadedMembers);
@@ -145,12 +146,13 @@ export function MembersRouteClient({ tripId }: MembersRouteClientProps) {
       return;
     }
 
-    const [loadedMembers, loadedInvites, loadedCurrentMember] =
-      await Promise.all([
-        listTripMembers(trip.id),
-        listPendingTripInvites(trip.id),
-        getTripMember(trip.id, user.uid),
-      ]);
+    const loadedCurrentMember = await getTripMember(trip.id, user.uid);
+    const [loadedMembers, loadedInvites] = await Promise.all([
+      listTripMembers(trip.id),
+      canManageMembers(loadedCurrentMember?.role)
+        ? listPendingTripInvites(trip.id)
+        : Promise.resolve([]),
+    ]);
 
     setMembers(loadedMembers);
     setInvites(loadedInvites);
@@ -183,7 +185,7 @@ export function MembersRouteClient({ tripId }: MembersRouteClientProps) {
       setStatusMessage(
         result === "added"
           ? "Lid toegevoegd aan deze reis."
-          : "Uitnodiging klaargezet. Dit lid wordt toegevoegd zodra die met dit e-mailadres inlogt."
+          : "Uitnodiging klaargezet. Deze persoon wordt toegevoegd zodra die met dit e-mailadres inlogt."
       );
       await refreshMembers();
     } catch (saveError) {
@@ -344,6 +346,10 @@ export function MembersRouteClient({ tripId }: MembersRouteClientProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                <p className="mb-4 text-sm leading-6 text-slate-600">
+                  Direct zoeken in gebruikersprofielen is afgeschermd. We zetten
+                  daarom een uitnodiging klaar voor dit e-mailadres.
+                </p>
                 <form className="grid gap-3 sm:grid-cols-[1fr_auto_auto]" onSubmit={handleInviteSubmit}>
                   <div className="grid gap-2">
                     <Label htmlFor="member-email">E-mailadres</Label>
@@ -672,7 +678,19 @@ function getMemberName(member: TripMember) {
 }
 
 function getErrorMessage(error: unknown) {
+  if (isFirebasePermissionError(error)) {
+    return "Je hebt geen rechten om leden of uitnodigingen aan te passen.";
+  }
+
   return error instanceof Error
     ? error.message
     : "Er ging iets mis. Probeer het opnieuw.";
+}
+
+function isFirebasePermissionError(error: unknown) {
+  return isRecord(error) && error.code === "permission-denied";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

@@ -1,0 +1,157 @@
+
+> routemaat@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.2.37:3000
+- Environments: .env.local
+✓ Ready in 823ms
+Creating turbopack project { dir: 'C:\\WebdesignBorgman\\routemaat', testMode: true }
+
+ GET /trips/japan-2028-2/schedule 200 in 1261ms (next.js: 794ms, application-code: 467ms)
+ GET / 200 in 62ms (next.js: 32ms, application-code: 30ms)
+ GET /trips 200 in 74ms (next.js: 34ms, application-code: 39ms)
+ GET /login 200 in 58ms (next.js: 29ms, application-code: 28ms)
+ GET /login 200 in 105ms (next.js: 4ms, application-code: 101ms)
+ GET / 200 in 22ms (next.js: 3ms, application-code: 19ms)
+ GET /login 200 in 24ms (next.js: 3ms, application-code: 22ms)
+ GET /trips 200 in 46ms (next.js: 4ms, application-code: 43ms)
+ GET /trips 200 in 70ms (next.js: 3ms, application-code: 67ms)
+ GET /trips 200 in 15ms (next.js: 5ms, application-code: 10ms)
+ GET /trips 200 in 22ms (next.js: 3ms, application-code: 19ms)
+ GET /trips 200 in 7ms (next.js: 3ms, application-code: 4ms)
+ GET /trips 200 in 18ms (next.js: 2ms, application-code: 16ms)
+ GET / 200 in 20ms (next.js: 2ms, application-code: 18ms)
+ GET /trips 200 in 30ms (next.js: 5ms, application-code: 24ms)
+✓ Compiled in 104ms
+ GET /trips 200 in 493ms (next.js: 116ms, application-code: 377ms)
+ GET /trips 200 in 309ms (next.js: 4ms, application-code: 305ms)
+ GET / 200 in 161ms (next.js: 113ms, application-code: 48ms)
+ GET / 200 in 355ms (next.js: 4ms, application-code: 351ms)
+ GET /trips 200 in 64ms (next.js: 18ms, application-code: 46ms)
+ GET /trips 200 in 24ms (next.js: 3ms, application-code: 21ms)
+ GET / 200 in 94ms (next.js: 7ms, application-code: 88ms)
+ GET / 200 in 23ms (next.js: 3ms, application-code: 20ms)
+ GET /trips 200 in 21ms (next.js: 2ms, application-code: 18ms)
+ GET /trips 200 in 52ms (next.js: 3ms, application-code: 50ms)
+ GET /login 200 in 124ms (next.js: 91ms, application-code: 34ms)
+ GET /trips 200 in 32ms (next.js: 5ms, application-code: 27ms)
+ GET /trips 200 in 47ms (next.js: 3ms, application-code: 43ms)
+✓ Compiled in 54ms
+ GET /trips 200 in 271ms (next.js: 121ms, application-code: 150ms)
+ GET /trips 200 in 116ms (next.js: 2ms, application-code: 114ms)
+ GET /trips 200 in 95ms (next.js: 3ms, application-code: 92ms)
+ GET /trips 200 in 95ms (next.js: 25ms, application-code: 70ms)
+ GET /trips 200 in 95ms (next.js: 69ms, application-code: 26ms)
+ GET /trips 200 in 96ms (next.js: 49ms, application-code: 47ms)
+✓ Compiled in 60ms
+ GET /trips 200 in 463ms (next.js: 100ms, application-code: 363ms)
+ GET /trips 200 in 328ms (next.js: 3ms, application-code: 325ms)
+✓ Compiled in 50ms
+ GET /trips 200 in 485ms (next.js: 99ms, application-code: 386ms)
+ GET /trips 200 in 341ms (next.js: 3ms, application-code: 338ms)
+✓ Compiled in 38ms
+ GET /trips 200 in 477ms (next.js: 117ms, application-code: 360ms)
+ GET /trips 200 in 323ms (next.js: 4ms, application-code: 319ms)
+✓ Compiled in 49ms
+ GET /trips 200 in 433ms (next.js: 111ms, application-code: 323ms)
+ GET /trips 200 in 286ms (next.js: 2ms, application-code: 284ms)
+✓ Compiled in 54ms
+ GET /trips 200 in 427ms (next.js: 96ms, application-code: 332ms)
+ GET /trips 200 in 296ms (next.js: 2ms, application-code: 294ms)
+✓ Compiled in 175ms
+ GET /trips 200 in 97ms (next.js: 31ms, application-code: 66ms)
+ GET /trips 200 in 97ms (next.js: 59ms, application-code: 38ms)
+ GET /trips 200 in 596ms (next.js: 128ms, application-code: 468ms)
+ GET /trips 200 in 427ms (next.js: 26ms, application-code: 401ms)
+ GET /trips 200 in 100ms (next.js: 6ms, application-code: 94ms)
+ GET /trips 200 in 436ms (next.js: 3ms, application-code: 433ms)
+✓ Compiled in 46ms
+ GET /trips 200 in 398ms (next.js: 92ms, application-code: 307ms)
+ GET /trips 200 in 272ms (next.js: 3ms, application-code: 269ms)
+✓ Compiled in 50ms
+ GET /trips 200 in 415ms (next.js: 93ms, application-code: 321ms)
+ GET /trips 200 in 284ms (next.js: 4ms, application-code: 281ms)
+ GET /trips 200 in 43ms (next.js: 3ms, application-code: 41ms)
+ GET /trips 200 in 48ms (next.js: 3ms, application-code: 45ms)
+ GET /login 200 in 126ms (next.js: 95ms, application-code: 31ms)
+ GET /trips 200 in 32ms (next.js: 5ms, application-code: 27ms)
+ GET /trips/japan-2028-2 200 in 605ms (next.js: 558ms, application-code: 46ms)
+ GET /trips/japan-2028-2/members 200 in 476ms (next.js: 453ms, application-code: 23ms)
+ GET /trips/japan-2028-2 200 in 39ms (next.js: 12ms, application-code: 27ms)
+ GET /login 200 in 22ms (next.js: 3ms, application-code: 19ms)
+ GET /login 200 in 32ms (next.js: 4ms, application-code: 28ms)
+ GET / 200 in 113ms (next.js: 81ms, application-code: 32ms)
+ GET /login 200 in 28ms (next.js: 3ms, application-code: 25ms)
+ GET /trips 200 in 23ms (next.js: 3ms, application-code: 21ms)
+ GET /trips/japan-2028-2 200 in 352ms (next.js: 8ms, application-code: 343ms)
+ GET /trips 200 in 29ms (next.js: 3ms, application-code: 26ms)
+ GET /trips 200 in 45ms (next.js: 5ms, application-code: 40ms)
+ GET /trips/japan-2028-2 200 in 53ms (next.js: 14ms, application-code: 39ms)
+ GET /trips/japan-2028-2/members 200 in 28ms (next.js: 7ms, application-code: 21ms)
+ GET /login 200 in 41ms (next.js: 4ms, application-code: 37ms)
+ GET /trips 200 in 30ms (next.js: 3ms, application-code: 27ms)
+ GET / 200 in 20ms (next.js: 2ms, application-code: 18ms)
+ GET /trips 200 in 70ms (next.js: 12ms, application-code: 58ms)
+ GET /trips 200 in 50ms (next.js: 4ms, application-code: 47ms)
+ GET / 200 in 22ms (next.js: 3ms, application-code: 19ms)
+ GET /trips 200 in 18ms (next.js: 2ms, application-code: 16ms)
+ GET /login 200 in 23ms (next.js: 3ms, application-code: 20ms)
+ GET /trips 200 in 24ms (next.js: 3ms, application-code: 21ms)
+ GET /trips/japan-2028-2 200 in 48ms (next.js: 13ms, application-code: 35ms)
+ GET /trips/japan-2028-2/members 200 in 50ms (next.js: 10ms, application-code: 40ms)
+✓ Compiled in 163ms
+ GET /trips/japan-2028-2/members 200 in 542ms (next.js: 171ms, application-code: 371ms)
+ GET /trips/japan-2028-2/members 200 in 664ms (next.js: 120ms, application-code: 545ms)
+ GET /trips/japan-2028-2/members 200 in 227ms (next.js: 34ms, application-code: 193ms)
+ GET /trips/japan-2028-2/members 200 in 124ms (next.js: 75ms, application-code: 48ms)
+ GET /trips/japan-2028-2/members 200 in 126ms (next.js: 34ms, application-code: 92ms)
+ GET /trips/japan-2028-2/members 200 in 129ms (next.js: 4ms, application-code: 124ms)
+ GET /trips/japan-2028-2/members 200 in 253ms (next.js: 4ms, application-code: 249ms)
+✓ Compiled in 83ms
+ GET /trips/japan-2028-2/members 200 in 554ms (next.js: 130ms, application-code: 424ms)
+ GET /trips/japan-2028-2/members 200 in 377ms (next.js: 4ms, application-code: 373ms)
+✓ Compiled in 61ms
+ GET /trips/japan-2028-2/members 200 in 152ms (next.js: 107ms, application-code: 45ms)
+✓ Compiled in 45ms
+ GET /trips/japan-2028-2/members 200 in 596ms (next.js: 122ms, application-code: 473ms)
+ GET /trips/japan-2028-2/members 200 in 421ms (next.js: 5ms, application-code: 416ms)
+ GET /trips 200 in 543ms (next.js: 124ms, application-code: 419ms)
+ GET / 200 in 141ms (next.js: 103ms, application-code: 37ms)
+ GET /trips 200 in 24ms (next.js: 6ms, application-code: 18ms)
+ GET /trips/japan-2028-2 200 in 167ms (next.js: 112ms, application-code: 55ms)
+ GET /trips/japan-2028-2/members 200 in 36ms (next.js: 11ms, application-code: 25ms)
+ GET /login 200 in 135ms (next.js: 101ms, application-code: 35ms)
+ GET /trips 200 in 34ms (next.js: 4ms, application-code: 30ms)
+ GET /trips 200 in 51ms (next.js: 3ms, application-code: 48ms)
+ GET /trips/japan-2028-2 200 in 40ms (next.js: 12ms, application-code: 28ms)
+ GET /trips/japan-2028-2/members 200 in 32ms (next.js: 7ms, application-code: 25ms)
+ GET /trips/japan-2028-2 200 in 37ms (next.js: 11ms, application-code: 27ms)
+ GET /trips/japan-2028-2/language 200 in 524ms (next.js: 472ms, application-code: 52ms)
+✓ Compiled in 53ms
+ GET /trips/japan-2028-2/language 200 in 185ms (next.js: 104ms, application-code: 81ms)
+ GET /trips/japan-2028-2/language 200 in 128ms (next.js: 3ms, application-code: 126ms)
+ GET /trips/japan-2028-2/language 200 in 94ms (next.js: 5ms, application-code: 89ms)
+ GET /trips/japan-2028-2/language 200 in 93ms (next.js: 59ms, application-code: 34ms)
+ GET /trips/japan-2028-2/language 200 in 95ms (next.js: 33ms, application-code: 62ms)
+✓ Compiled in 41ms
+ GET /trips/japan-2028-2/language 200 in 115ms (next.js: 76ms, application-code: 38ms)
+✓ Compiled in 40ms
+ GET /trips/japan-2028-2/language 200 in 128ms (next.js: 90ms, application-code: 37ms)
+ GET /trips/japan-2028-2/language 200 in 120ms (next.js: 74ms, application-code: 45ms)
+ GET /trips/japan-2028-2/language 200 in 108ms (next.js: 64ms, application-code: 44ms)
+✓ Compiled in 39ms
+ GET /trips/japan-2028-2/language 200 in 145ms (next.js: 104ms, application-code: 42ms)
+✓ Compiled in 37ms
+ GET /trips/japan-2028-2/language 200 in 112ms (next.js: 73ms, application-code: 39ms)
+✓ Compiled in 37ms
+ GET /trips/japan-2028-2/language 200 in 114ms (next.js: 71ms, application-code: 42ms)
+ GET /trips/japan-2028-2/language 200 in 127ms (next.js: 86ms, application-code: 41ms)
+ GET /trips/japan-2028-2/language 200 in 108ms (next.js: 69ms, application-code: 39ms)
+✓ Compiled in 33ms
+ GET /trips/japan-2028-2/language 200 in 138ms (next.js: 92ms, application-code: 46ms)
+ GET /trips/japan-2028-2/language 200 in 345ms (next.js: 10ms, application-code: 335ms)
+ GET /trips/japan-2028-2 200 in 163ms (next.js: 126ms, application-code: 37ms)
+ GET /trips/japan-2028-2/schedule 200 in 134ms (next.js: 97ms, application-code: 37ms)
+ GET /trips/japan-2028-2 200 in 56ms (next.js: 11ms, application-code: 45ms)

@@ -1,0 +1,39 @@
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+[browser] Account wisselen mislukt FirebaseError: Firebase: Error (auth/popup-closed-by-user). (features/auth/UserMenu.tsx:89:25)
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+⚠ Fast Refresh had to perform a full reload when ./features/auth/AuthProvider.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./features/members/memberService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./features/members/memberService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./features/members/memberService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./features/members/memberService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./features/members/memberService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./features/members/memberService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./features/members/memberService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./features/auth/AuthProvider.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+[browser] Gebruiker of uitnodigingen bijwerken mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/auth/AuthProvider.tsx:46:21)
+Debugger listening on ws://127.0.0.1:9229/2eb0a734-4f1c-4b45-b52d-e9e4906c18f6
+For help, see: https://nodejs.org/en/docs/inspector
+⚠ Fast Refresh had to perform a full reload when ./features/members/memberService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./features/members/memberService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./features/auth/AuthProvider.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload

@@ -372,10 +372,8 @@ export async function createTripForUser(
 }
 
 export async function listTripsForUser(userId: string): Promise<Trip[]> {
-  const [membershipSnapshot, legacyTripsSnapshot] = await Promise.all([
-    getDocs(tripMembershipsCollectionRef(userId)),
-    getDocs(query(tripsCollectionRef(), where("createdBy", "==", userId))),
-  ]);
+  const membershipSnapshot = await getDocs(tripMembershipsCollectionRef(userId));
+  const legacyTripSnapshots = await getLegacyTripSnapshotsForUser(userId);
   const indexedTrips: Array<Trip | null> = await Promise.all(
     membershipSnapshot.docs.map(async (membershipDoc) => {
       const membership = mapMembershipSnapshotData(membershipDoc);
@@ -391,7 +389,7 @@ export async function listTripsForUser(userId: string): Promise<Trip[]> {
     })
   );
   const legacyTrips = await Promise.all(
-    legacyTripsSnapshot.docs.map(async (tripSnapshot) => {
+    legacyTripSnapshots.map(async (tripSnapshot) => {
       const trip = mapTripDocToTrip(tripSnapshot);
 
       return {
@@ -419,6 +417,18 @@ export async function listTripsForUser(userId: string): Promise<Trip[]> {
     .sort((firstTrip, secondTrip) =>
       firstTrip.startDate.localeCompare(secondTrip.startDate)
     );
+}
+
+async function getLegacyTripSnapshotsForUser(userId: string) {
+  try {
+    const legacyTripsSnapshot = await getDocs(
+      query(tripsCollectionRef(), where("createdBy", "==", userId))
+    );
+
+    return legacyTripsSnapshot.docs;
+  } catch {
+    return [];
+  }
 }
 
 export async function getTripById(tripId: string): Promise<Trip | null> {

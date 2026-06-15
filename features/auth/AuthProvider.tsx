@@ -40,11 +40,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setLoading(false);
 
       if (nextUser) {
-        void upsertUserProfile(nextUser)
-          .then(() => acceptPendingInvitesForUser(nextUser))
-          .catch((error) => {
-            console.error("Gebruiker of uitnodigingen bijwerken mislukt", error);
-          });
+        void syncSignedInUser(nextUser);
       }
     });
   }, []);
@@ -61,4 +57,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+async function syncSignedInUser(user: AuthUser) {
+  try {
+    await upsertUserProfile(user);
+  } catch (error) {
+    console.error("Gebruiker bijwerken mislukt", error);
+    return;
+  }
+
+  try {
+    await acceptPendingInvitesForUser(user);
+  } catch (error) {
+    console.error("Uitnodigingen accepteren mislukt", error);
+  }
 }
