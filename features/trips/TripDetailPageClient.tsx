@@ -8,6 +8,7 @@ import {
   FileText,
   Languages,
   Lightbulb,
+  ListTodo,
   MapPin,
   Pencil,
   Route,
@@ -185,6 +186,13 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         icon: FileText,
         href: currentTrip ? `/trips/${currentTrip.id}/documents` : undefined,
         accentClassName: "bg-lime-50 text-lime-700",
+      },
+      {
+        title: "Taken",
+        description: "Houd bij wat nog geregeld moet worden.",
+        icon: ListTodo,
+        href: currentTrip ? `/trips/${currentTrip.id}/tasks` : undefined,
+        accentClassName: "bg-pink-50 text-pink-600",
       },
       {
         title: "Leden",

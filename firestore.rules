@@ -71,6 +71,10 @@ service cloud.firestore {
       return !data.keys().hasAny([field]) || data[field] is number;
     }
 
+    function hasOptionalTimestamp(data, field) {
+      return !data.keys().hasAny([field]) || data[field] is timestamp;
+    }
+
     function hasOptionalList(data, field) {
       return !data.keys().hasAny([field]) || data[field] is list;
     }
@@ -336,6 +340,29 @@ service cloud.firestore {
       return type in ['link', 'note', 'file'];
     }
 
+    function isValidTaskStatus(status) {
+      return status in ['open', 'in_progress', 'done'];
+    }
+
+    function isValidTaskPriority(priority) {
+      return priority in ['low', 'medium', 'high'];
+    }
+
+    function isValidTaskCategory(category) {
+      return category in [
+        'general',
+        'booking',
+        'documents',
+        'transport',
+        'money',
+        'health',
+        'packing',
+        'tickets',
+        'food',
+        'other'
+      ];
+    }
+
     function dateFieldInTripPeriod(data, field, tripId) {
       return !data.keys().hasAny([field])
         || (data[field] is string
@@ -411,6 +438,39 @@ service cloud.firestore {
 
     function validDocumentUpdate(data, tripId) {
       return validDocumentData(data, tripId)
+        && data.createdBy == resource.data.createdBy;
+    }
+
+    function validTaskData(data, tripId) {
+      return data.keys().hasAll([
+          'title',
+          'status',
+          'priority',
+          'category',
+          'createdBy'
+        ])
+        && data.title is string
+        && isValidTaskStatus(data.status)
+        && isValidTaskPriority(data.priority)
+        && isValidTaskCategory(data.category)
+        && data.createdBy is string
+        && (!data.keys().hasAny(['tripId']) || data.tripId == tripId)
+        && hasOptionalString(data, 'description')
+        && hasOptionalString(data, 'assignedToUserId')
+        && hasOptionalString(data, 'assignedToDisplayName')
+        && hasOptionalString(data, 'dueDate')
+        && hasOptionalTimestamp(data, 'completedAt')
+        && hasOptionalString(data, 'completedBy');
+    }
+
+    function validTaskCreate(data, tripId) {
+      return validTaskData(data, tripId)
+        && data.keys().hasAll(['tripId'])
+        && data.createdBy == request.auth.uid;
+    }
+
+    function validTaskUpdate(data, tripId) {
+      return validTaskData(data, tripId)
         && data.createdBy == resource.data.createdBy;
     }
 
@@ -540,6 +600,15 @@ service cloud.firestore {
           && validDocumentCreate(request.resource.data, tripId);
         allow update: if canEditTripContent(tripId)
           && validDocumentUpdate(request.resource.data, tripId);
+        allow delete: if canEditTripContent(tripId);
+      }
+
+      match /tasks/{taskId} {
+        allow read: if canReadTrip(tripId);
+        allow create: if canEditTripContent(tripId)
+          && validTaskCreate(request.resource.data, tripId);
+        allow update: if canEditTripContent(tripId)
+          && validTaskUpdate(request.resource.data, tripId);
         allow delete: if canEditTripContent(tripId);
       }
     }
