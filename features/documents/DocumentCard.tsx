@@ -1,8 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import {
   CalendarClock,
   ExternalLink,
   FileText,
+  ImageIcon,
   LinkIcon,
+  Loader2,
   Pencil,
   Star,
   StickyNote,
@@ -21,7 +26,10 @@ import {
   documentCategoryLabels,
   documentTypeLabels,
 } from "@/features/documents/documentLabels";
-import { formatFileSize } from "@/features/documents/documentFileService";
+import {
+  createDocumentFileObjectUrl,
+  formatFileSize,
+} from "@/features/documents/documentFileService";
 import type { TravelDocument } from "@/features/documents/documentTypes";
 
 type DocumentCardProps = {
@@ -39,6 +47,29 @@ export function DocumentCard({
   const TypeIcon = document.type === "link" ? LinkIcon : FileText;
   const dateTimeText = formatRelatedDateTime(document);
   const fileMetaText = formatFileMeta(document);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isOpeningFile, setIsOpeningFile] = useState(false);
+
+  async function openFile() {
+    if (!document.filePath) {
+      setPreviewError("Bestand niet beschikbaar");
+      return;
+    }
+
+    setIsOpeningFile(true);
+    setPreviewError(null);
+
+    try {
+      const objectUrl = await createDocumentFileObjectUrl(document.filePath);
+      window.open(objectUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    } catch (error) {
+      console.error("Bestand openen mislukt", error);
+      setPreviewError("Bestand openen lukt niet");
+    } finally {
+      setIsOpeningFile(false);
+    }
+  }
 
   return (
     <Card className="border-cyan-100 bg-white/95 shadow-[0_14px_35px_rgba(14,165,233,0.10)] transition-shadow hover:shadow-[0_18px_42px_rgba(236,72,153,0.12)]">
@@ -143,12 +174,23 @@ export function DocumentCard({
             ) : null}
           </div>
         ) : null}
-        {document.type === "file" && document.downloadUrl ? (
-          <Button asChild variant="outline" className="w-full justify-start sm:w-auto">
-            <a href={document.downloadUrl} target="_blank" rel="noreferrer">
+        {document.type === "file" ? (
+          <FilePreview document={document} errorMessage={previewError} />
+        ) : null}
+        {document.type === "file" && document.filePath ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-start sm:w-auto"
+            disabled={isOpeningFile}
+            onClick={openFile}
+          >
+            {isOpeningFile ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
               <ExternalLink className="size-4" aria-hidden="true" />
-              Open bestand
-            </a>
+            )}
+            {isOpeningFile ? "Bestand openen..." : "Open bestand"}
           </Button>
         ) : null}
         {document.type === "link" && document.url ? (
@@ -164,6 +206,158 @@ export function DocumentCard({
   );
 }
 
+type FilePreviewProps = {
+  document: TravelDocument;
+  errorMessage: string | null;
+};
+
+function FilePreview({ document, errorMessage }: FilePreviewProps) {
+  const isImage = isImageFile(document);
+  const isPdf = document.fileContentType === "application/pdf";
+
+  if (!isImage && !isPdf) {
+    return (
+      <div className="flex min-h-24 items-center gap-3 rounded-lg border border-cyan-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-cyan-700 shadow-sm">
+          <FileText className="size-5" aria-hidden="true" />
+        </div>
+        <p className="leading-6">
+          Voor dit bestandstype is geen voorbeeld beschikbaar.
+        </p>
+      </div>
+    );
+  }
+
+  if (!hasFilePath(document)) {
+    return (
+      <div className="flex min-h-24 items-center gap-3 rounded-lg border border-pink-100 bg-pink-50 px-4 py-3 text-sm text-pink-800">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-pink-700 shadow-sm">
+          <FileText className="size-5" aria-hidden="true" />
+        </div>
+        <p>Bestand niet beschikbaar</p>
+      </div>
+    );
+  }
+
+  return (
+    <SecureFilePreview
+      key={document.filePath ?? document.id}
+      document={document}
+      openErrorMessage={errorMessage}
+    />
+  );
+}
+
+type SecureFilePreviewProps = {
+  document: TravelDocument & { filePath: string };
+  openErrorMessage: string | null;
+};
+
+type SecureFilePreviewState =
+  | { status: "loading" }
+  | { status: "ready"; objectUrl: string }
+  | { status: "error"; message: string };
+
+function SecureFilePreview({
+  document,
+  openErrorMessage,
+}: SecureFilePreviewProps) {
+  const [previewState, setPreviewState] = useState<SecureFilePreviewState>({
+    status: "loading",
+  });
+  const isImage = isImageFile(document);
+
+  useEffect(() => {
+    let isCancelled = false;
+    let objectUrl: string | null = null;
+
+    async function loadPreview(filePath: string) {
+      try {
+        objectUrl = await createDocumentFileObjectUrl(filePath);
+
+        if (isCancelled) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+
+        setPreviewState({ status: "ready", objectUrl });
+      } catch (error) {
+        console.error("Bestandsvoorbeeld laden mislukt", error);
+
+        if (!isCancelled) {
+          setPreviewState({
+            status: "error",
+            message: "Voorvertoning niet beschikbaar",
+          });
+        }
+      }
+    }
+
+    void loadPreview(document.filePath);
+
+    return () => {
+      isCancelled = true;
+
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [document.filePath]);
+
+  if (previewState.status === "loading") {
+    return (
+      <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed border-cyan-200 bg-cyan-50/50 text-sm font-medium text-cyan-800">
+        <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+        Voorbeeld laden...
+      </div>
+    );
+  }
+
+  if (previewState.status === "error" || openErrorMessage) {
+    const message =
+      openErrorMessage ??
+      (previewState.status === "error"
+        ? previewState.message
+        : "Voorvertoning niet beschikbaar");
+
+    return (
+      <div className="flex min-h-24 items-center gap-3 rounded-lg border border-pink-100 bg-pink-50 px-4 py-3 text-sm text-pink-800">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-pink-700 shadow-sm">
+          <FileText className="size-5" aria-hidden="true" />
+        </div>
+        <p>{message}</p>
+      </div>
+    );
+  }
+
+  if (isImage) {
+    return (
+      <div className="overflow-hidden rounded-lg border border-cyan-100 bg-slate-50">
+        {/* eslint-disable-next-line @next/next/no-img-element -- Blob previews cannot be optimized by next/image. */}
+        <img
+          src={previewState.objectUrl}
+          alt={`Voorbeeld van ${document.fileName ?? document.title}`}
+          className="max-h-72 w-full object-contain"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-cyan-100 bg-slate-50">
+      <div className="flex items-center gap-2 border-b border-cyan-100 bg-white px-3 py-2 text-sm font-medium text-slate-700">
+        <ImageIcon className="size-4 text-cyan-700" aria-hidden="true" />
+        PDF-voorbeeld
+      </div>
+      <iframe
+        src={previewState.objectUrl}
+        title={`Voorbeeld van ${document.fileName ?? document.title}`}
+        className="h-72 w-full bg-white"
+      />
+    </div>
+  );
+}
+
 function formatFileMeta(document: TravelDocument) {
   const parts = [
     typeof document.fileSize === "number"
@@ -172,6 +366,16 @@ function formatFileMeta(document: TravelDocument) {
   ].filter(Boolean);
 
   return parts.join(" - ");
+}
+
+function isImageFile(document: TravelDocument) {
+  return document.fileContentType?.startsWith("image/") ?? false;
+}
+
+function hasFilePath(
+  document: TravelDocument
+): document is TravelDocument & { filePath: string } {
+  return typeof document.filePath === "string" && document.filePath.length > 0;
 }
 
 function formatRelatedDateTime(document: TravelDocument) {

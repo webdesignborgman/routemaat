@@ -1,11 +1,10 @@
 import {
   deleteObject,
-  getDownloadURL,
   ref,
   uploadBytesResumable,
 } from "firebase/storage";
 
-import { storage } from "@/lib/firebase";
+import { auth, storage } from "@/lib/firebase";
 
 export const maxDocumentFileSize = 10 * 1024 * 1024;
 
@@ -25,7 +24,6 @@ export type DocumentFileMetadata = {
   filePath: string;
   fileContentType: string;
   fileSize: number;
-  downloadUrl: string;
 };
 
 export type DocumentFileValidationError =
@@ -144,8 +142,30 @@ export async function uploadDocumentFile(
     filePath,
     fileContentType: file.type,
     fileSize: file.size,
-    downloadUrl: await getDownloadURL(storageRef),
   };
+}
+
+export async function createDocumentFileObjectUrl(
+  filePath: string
+): Promise<string> {
+  const token = await getRequiredAuthToken();
+  const response = await fetch(
+    `/api/document-file?path=${encodeURIComponent(filePath)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Bestand ophalen lukt niet.");
+  }
+
+  const blob = await response.blob();
+
+  return URL.createObjectURL(blob);
 }
 
 export async function deleteDocumentFile(filePath: string): Promise<void> {
@@ -204,4 +224,14 @@ function isStorageObjectNotFoundError(error: unknown) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+async function getRequiredAuthToken() {
+  const user = auth?.currentUser;
+
+  if (!user) {
+    throw new Error("Log opnieuw in om dit bestand te openen.");
+  }
+
+  return user.getIdToken();
 }
