@@ -6,3 +6,11 @@ FirebaseError: Firebase Storage: Max retry time for operation exceeded, please t
 FirebaseError: Firebase Storage: Max retry time for operation exceeded, please try again. (storage/retry-limit-exceeded) (features/documents/DocumentCard.tsx:268:19)
 [browser] Bestandsvoorbeeld laden mislukt FirebaseError: Firebase Storage: Max retry time for operation exceeded, please try again. (storage/retry-limit-exceeded)
 FirebaseError: Firebase Storage: Max retry time for operation exceeded, please try again. (storage/retry-limit-exceeded) (features/documents/DocumentCard.tsx:268:19)
+[browser] Taken laden mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/tasks/TasksPageClient.tsx:224:17)
+[browser] Taken laden mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/tasks/TasksPageClient.tsx:224:17)
+[browser] Taken laden mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/tasks/TasksPageClient.tsx:224:17)
+[browser] Taken laden mislukt FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (features/tasks/TasksPageClient.tsx:224:17)

@@ -1,15 +1,16 @@
 import Link from "next/link";
-import { Home, Route } from "lucide-react";
+import { Backpack, Home, Route } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/trips", label: "Reizen", icon: Route },
+  { href: "/inpaklijst", label: "Inpaklijst", icon: Backpack },
 ] as const;
 
 export function BottomNav() {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 box-border border-t border-cyan-100 bg-white/90 px-3 py-2 shadow-[0_-10px_30px_rgba(14,165,233,0.12)] backdrop-blur md:hidden">
-      <div className="mx-auto grid max-w-sm grid-cols-2 gap-2">
+      <div className="mx-auto grid max-w-sm grid-cols-3 gap-2">
         {navItems.map((item) => {
           const Icon = item.icon;
 

@@ -363,6 +363,21 @@ service cloud.firestore {
       ];
     }
 
+    function isValidPackingCategory(category) {
+      return category in [
+        'documenten',
+        'kleding',
+        'toiletartikelen',
+        'elektronica',
+        'medicatie',
+        'geld',
+        'onderweg',
+        'weer',
+        'activiteiten',
+        'overig'
+      ];
+    }
+
     function dateFieldInTripPeriod(data, field, tripId) {
       return !data.keys().hasAny([field])
         || (data[field] is string
@@ -474,6 +489,39 @@ service cloud.firestore {
         && data.createdBy == resource.data.createdBy;
     }
 
+    function validPackingItemData(data, userId) {
+      return data.keys().hasAll([
+          'userId',
+          'name',
+          'category',
+          'quantity',
+          'isDefault',
+          'isArchived',
+          'sortOrder'
+        ])
+        && data.userId == userId
+        && data.name is string
+        && isValidPackingCategory(data.category)
+        && data.quantity is number
+        && data.isDefault is bool
+        && data.isArchived is bool
+        && data.sortOrder is number
+        && hasOptionalString(data, 'note');
+    }
+
+    function validPackingCheckData(data, tripId) {
+      return data.keys().hasAll([
+          'tripId',
+          'userId',
+          'itemId',
+          'checked'
+        ])
+        && data.tripId == tripId
+        && data.userId == request.auth.uid
+        && data.itemId is string
+        && data.checked is bool;
+    }
+
     match /users/{userId} {
       // Userprofielen blijven prive. Direct zoeken in users op e-mail voor
       // uitnodigen is hiermee niet toegestaan; gebruik daarvoor later een
@@ -498,6 +546,14 @@ service cloud.firestore {
           userId,
           resource.data.role
         );
+      }
+
+      match /packingItems/{itemId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        allow create, update: if signedIn()
+          && request.auth.uid == userId
+          && validPackingItemData(request.resource.data, userId);
+        allow delete: if signedIn() && request.auth.uid == userId;
       }
     }
 
@@ -610,6 +666,15 @@ service cloud.firestore {
         allow update: if canEditTripContent(tripId)
           && validTaskUpdate(request.resource.data, tripId);
         allow delete: if canEditTripContent(tripId);
+      }
+
+      match /packingChecks/{checkId} {
+        allow read: if canReadTrip(tripId)
+          && resource.data.userId == request.auth.uid;
+        allow create, update: if canReadTrip(tripId)
+          && validPackingCheckData(request.resource.data, tripId);
+        allow delete: if canReadTrip(tripId)
+          && resource.data.userId == request.auth.uid;
       }
     }
 

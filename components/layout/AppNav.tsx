@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Home, Route } from "lucide-react";
+import { Backpack, Home, Route } from "lucide-react";
 
 import { UserMenu } from "@/features/auth/UserMenu";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/trips", label: "Reizen", icon: Route },
+  { href: "/inpaklijst", label: "Inpaklijst", icon: Backpack },
 ] as const;
 
 export function AppNav() {

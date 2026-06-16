@@ -13,6 +13,7 @@ import {
   Pencil,
   Route,
   Users,
+  Backpack,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -193,6 +194,15 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         icon: ListTodo,
         href: currentTrip ? `/trips/${currentTrip.id}/tasks` : undefined,
         accentClassName: "bg-pink-50 text-pink-600",
+      },
+      {
+        title: "Inpaklijst",
+        description: "Vink je persoonlijke inpaklijst af.",
+        icon: Backpack,
+        href: currentTrip
+          ? `/trips/${currentTrip.id}/inpaklijst`
+          : undefined,
+        accentClassName: "bg-cyan-50 text-cyan-700",
       },
       {
         title: "Leden",
