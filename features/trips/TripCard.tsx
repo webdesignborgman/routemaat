@@ -9,7 +9,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { formatTripPeriod } from "@/features/trips/tripDates";
+import { Badge } from "@/components/ui/badge";
+import {
+  formatTripPeriod,
+  getTripDayCount,
+  getTripStatus,
+  getTripStatusLabel,
+  type TripStatus,
+} from "@/features/trips/tripDates";
 import type { Trip } from "@/features/trips/tripTypes";
 
 type TripCardProps = {
@@ -19,6 +26,8 @@ type TripCardProps = {
 
 export function TripCard({ trip, onDelete }: TripCardProps) {
   const memberCount = trip.memberCount ?? trip.memberIds.length;
+  const dayCount = getTripDayCount(trip);
+  const status = getTripStatus(trip);
 
   return (
     <Card className="border-cyan-100 bg-white/95 shadow-[0_18px_45px_rgba(14,165,233,0.12)] transition-shadow hover:shadow-[0_20px_50px_rgba(236,72,153,0.12)]">
@@ -40,6 +49,17 @@ export function TripCard({ trip, onDelete }: TripCardProps) {
               <Trash2 className="size-4" aria-hidden="true" />
             </Button>
           ) : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className={statusBadgeClasses[status]}>
+            {getTripStatusLabel(status)}
+          </Badge>
+          <Badge
+            variant="outline"
+            className="border-lime-100 bg-lime-50 text-lime-700"
+          >
+            {dayCount} {dayCount === 1 ? "dag" : "dagen"}
+          </Badge>
         </div>
         <CardDescription className="flex items-center gap-2 text-slate-600">
           <MapPin className="size-4 text-pink-500" aria-hidden="true" />
@@ -85,3 +105,9 @@ export function TripCard({ trip, onDelete }: TripCardProps) {
     </Card>
   );
 }
+
+const statusBadgeClasses: Record<TripStatus, string> = {
+  upcoming: "border-cyan-200 bg-cyan-50 text-cyan-700",
+  ongoing: "border-lime-200 bg-lime-50 text-lime-700",
+  past: "border-pink-200 bg-pink-50 text-pink-700",
+};

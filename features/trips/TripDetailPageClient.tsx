@@ -37,9 +37,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/features/auth/useAuth";
+import { listDocumentsForTrip } from "@/features/documents/documentService";
+import { listIdeasForTrip } from "@/features/ideas/ideaService";
 import { canEditTripContent } from "@/features/members/memberPermissions";
 import { getTripMember } from "@/features/members/memberService";
 import type { TripMember } from "@/features/members/memberTypes";
+import {
+  listPackingChecksForTrip,
+  listPackingItemsForUser,
+} from "@/features/packing/packingService";
+import { listTasksForTrip } from "@/features/tasks/taskService";
 import {
   TripLanguageFields,
   type TripLanguageFormValues,
@@ -65,7 +72,18 @@ type QuickAction = {
   description: string;
   icon: typeof Lightbulb;
   href?: string;
+  metric?: string;
   accentClassName: string;
+};
+
+type TripDashboardMetrics = {
+  ideaCount: number;
+  scheduledIdeaCount: number;
+  documentCount: number;
+  openTaskCount: number;
+  doneTaskCount: number;
+  packingCheckedCount: number;
+  packingTotalCount: number;
 };
 
 type TripFormErrors = {
@@ -105,6 +123,8 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
   const { user } = useAuth();
   const { trip, isLoading, errorMessage } = useTripLookup(tripId);
   const [currentMember, setCurrentMember] = useState<TripMember | null>(null);
+  const [dashboardMetrics, setDashboardMetrics] =
+    useState<TripDashboardMetrics | null>(null);
   const [editedTrip, setEditedTrip] = useState<Trip | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -156,6 +176,57 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
     };
   }, [trip, user]);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadDashboardMetrics() {
+      if (!trip) {
+        return;
+      }
+
+      try {
+        const [ideas, documents, tasks, packingItems, packingChecks] =
+          await Promise.all([
+            listIdeasForTrip(trip.id),
+            listDocumentsForTrip(trip.id),
+            listTasksForTrip(trip.id),
+            user ? listPackingItemsForUser(user.uid) : Promise.resolve([]),
+            user
+              ? listPackingChecksForTrip(trip.id, user.uid)
+              : Promise.resolve([]),
+          ]);
+
+        if (!isCancelled) {
+          setDashboardMetrics({
+            ideaCount: ideas.length,
+            scheduledIdeaCount: ideas.filter(
+              (idea) => idea.showInSchedule && idea.scheduleDate
+            ).length,
+            documentCount: documents.length,
+            openTaskCount: tasks.filter((task) => task.status !== "done").length,
+            doneTaskCount: tasks.filter((task) => task.status === "done").length,
+            packingCheckedCount: packingChecks.filter((check) => check.checked)
+              .length,
+            packingTotalCount: packingItems.filter((item) => !item.isArchived)
+              .length,
+          });
+        }
+      } catch (error) {
+        console.error("Dashboardstatistieken laden mislukt", error);
+
+        if (!isCancelled) {
+          setDashboardMetrics(null);
+        }
+      }
+    }
+
+    void loadDashboardMetrics();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [trip, user]);
+
   const quickActions = useMemo<QuickAction[]>(
     () => [
       {
@@ -163,6 +234,10 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         description: "Bekijk geplande activiteiten per dag.",
         icon: CalendarClock,
         href: currentTrip ? `/trips/${currentTrip.id}/schedule` : undefined,
+        metric:
+          dashboardMetrics && dashboardMetrics.scheduledIdeaCount > 0
+            ? `${dashboardMetrics.scheduledIdeaCount} gepland`
+            : undefined,
         accentClassName: "bg-pink-50 text-pink-600",
       },
       {
@@ -170,6 +245,10 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         description: "Plekken, activiteiten, links en notities.",
         icon: Lightbulb,
         href: currentTrip ? `/trips/${currentTrip.id}/ideas` : undefined,
+        metric:
+          dashboardMetrics && dashboardMetrics.ideaCount > 0
+            ? `${dashboardMetrics.ideaCount} items`
+            : undefined,
         accentClassName: "bg-cyan-50 text-cyan-700",
       },
       {
@@ -186,6 +265,10 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         description: "Bewaar links, boekingen en belangrijke reisinfo.",
         icon: FileText,
         href: currentTrip ? `/trips/${currentTrip.id}/documents` : undefined,
+        metric:
+          dashboardMetrics && dashboardMetrics.documentCount > 0
+            ? `${dashboardMetrics.documentCount} bewaard`
+            : undefined,
         accentClassName: "bg-lime-50 text-lime-700",
       },
       {
@@ -193,6 +276,9 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         description: "Houd bij wat nog geregeld moet worden.",
         icon: ListTodo,
         href: currentTrip ? `/trips/${currentTrip.id}/tasks` : undefined,
+        metric: dashboardMetrics
+          ? `${dashboardMetrics.openTaskCount} open`
+          : undefined,
         accentClassName: "bg-pink-50 text-pink-600",
       },
       {
@@ -202,6 +288,10 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         href: currentTrip
           ? `/trips/${currentTrip.id}/inpaklijst`
           : undefined,
+        metric:
+          dashboardMetrics && dashboardMetrics.packingTotalCount > 0
+            ? `${dashboardMetrics.packingCheckedCount}/${dashboardMetrics.packingTotalCount} ingepakt`
+            : undefined,
         accentClassName: "bg-cyan-50 text-cyan-700",
       },
       {
@@ -212,7 +302,7 @@ export function TripDetailPageClient({ tripId }: TripDetailPageClientProps) {
         accentClassName: "bg-slate-100 text-slate-700",
       },
     ],
-    [currentTrip]
+    [currentTrip, dashboardMetrics]
   );
 
   if (isLoading) {
@@ -616,7 +706,14 @@ function QuickActionCard({ action }: QuickActionCardProps) {
           <h3 className="text-base font-semibold text-slate-950">
             {action.title}
           </h3>
-          {!action.href ? (
+          {action.metric ? (
+            <Badge
+              variant="outline"
+              className="border-lime-100 bg-lime-50 text-lime-700"
+            >
+              {action.metric}
+            </Badge>
+          ) : !action.href ? (
             <Badge
               variant="outline"
               className="border-pink-100 bg-pink-50 text-pink-700"

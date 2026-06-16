@@ -425,7 +425,7 @@ export function DocumentsPageClient({ trip }: DocumentsPageClientProps) {
 
           {documents.length === 0 ? (
             <StatusState
-              title="Geen documenten gevonden"
+              title="Nog geen documenten toegevoegd"
               description={
                 canEditDocuments
                   ? "Voeg de eerste link, notitie of boeking toe voor deze reis."

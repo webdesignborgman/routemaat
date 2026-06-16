@@ -1,4 +1,4 @@
-import { Lightbulb, MapPinned, Route, Sparkles } from "lucide-react";
+import { Backpack, Lightbulb, Route, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/layout/AppShell";
 import { HomeAuthAction } from "@/features/auth/HomeAuthAction";
@@ -17,9 +17,9 @@ const highlights = [
     className: "border-pink-100 bg-pink-50 text-pink-600",
   },
   {
-    title: "Overzicht houden",
-    description: "Zie wat gepland, misschien interessant of al klaar is.",
-    icon: MapPinned,
+    title: "Samen overzicht houden",
+    description: "Beheer ideeën, taken, documenten en je inpaklijst op één plek.",
+    icon: Backpack,
     className: "border-lime-100 bg-lime-50 text-lime-700",
   },
 ] as const;
@@ -40,7 +40,7 @@ export default function Home() {
             </h1>
             <p className="max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
               Plan reizen samen, verzamel ideeën en houd per trip overzicht van
-              plekken, links, tags en notities.
+              planning, documenten, taken en je inpaklijst.
             </p>
           </div>
 

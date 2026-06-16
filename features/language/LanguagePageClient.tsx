@@ -466,7 +466,7 @@ export function LanguagePageClient({ trip }: LanguagePageClientProps) {
 
           {phrases.length === 0 ? (
         <EmptyState
-          title="Geen zinnen gevonden"
+          title="Nog geen taalzinnen toegevoegd"
           description={
             canEditPhrases
               ? "Voeg de eerste handige zin toe voor deze reis."

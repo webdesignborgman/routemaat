@@ -299,7 +299,7 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Ideeën / Activiteiten"
+        title="Ideeën / activiteiten"
         description={`Verzamel plekken, restaurants, activiteiten en praktische tips voor ${trip.title}.`}
         backHref={`/trips/${trip.id}`}
         action={
@@ -339,13 +339,13 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
 
           {ideas.length > 0 ? (
             <div className="rounded-xl border border-cyan-100 bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_24px_rgba(14,165,233,0.06)]">
-              {filteredIdeas.length} van {ideas.length} items zichtbaar in Ideeën / Activiteiten
+              {filteredIdeas.length} van {ideas.length} items zichtbaar in Ideeën / activiteiten
             </div>
           ) : null}
 
           {ideas.length === 0 ? (
             <EmptyState
-              title="Geen items gevonden"
+              title="Nog geen ideeën of activiteiten toegevoegd"
               description={
                 canEditIdeas
                   ? "Voeg het eerste idee of de eerste activiteit toe voor deze reis."
@@ -357,7 +357,7 @@ export function IdeasPageClient({ trip }: IdeasPageClientProps) {
           ) : filteredIdeas.length === 0 ? (
             <EmptyState
               title="Geen resultaten"
-              description="Pas je zoekterm of filters aan om weer items in Ideeën / Activiteiten te zien."
+              description="Pas je zoekterm of filters aan om weer ideeën of activiteiten te zien."
               actionLabel={hasActiveFilters ? "Filters wissen" : undefined}
               onAction={
                 hasActiveFilters ? () => setFilters(defaultFilters) : undefined

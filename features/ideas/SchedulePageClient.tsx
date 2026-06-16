@@ -176,7 +176,7 @@ export function SchedulePageClient({ trip }: SchedulePageClientProps) {
     <div className="space-y-6">
       <PageHeader
         title="Reisschema"
-        description={`Geplande items uit Ideeën / Activiteiten voor ${trip.title}.`}
+        description={`Geplande items uit Ideeën / activiteiten voor ${trip.title}.`}
         backHref={`/trips/${trip.id}`}
         action={
           todayDay ? (
@@ -488,7 +488,7 @@ function EmptyScheduleDay({ tripId }: EmptyScheduleDayProps) {
           <div>
             <h3 className="font-semibold text-slate-950">Nog niets gepland</h3>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              Kies in Ideeën / Activiteiten een item en zet Plaats in reisschema aan.
+              Kies in Ideeën / activiteiten een item en zet Plaats in reisschema aan.
             </p>
           </div>
         </div>
@@ -497,7 +497,7 @@ function EmptyScheduleDay({ tripId }: EmptyScheduleDayProps) {
           variant="outline"
           className="w-full justify-start border-cyan-100 bg-white sm:w-auto"
         >
-          <Link href={`/trips/${tripId}/ideas`}>Naar Ideeën / Activiteiten</Link>
+          <Link href={`/trips/${tripId}/ideas`}>Naar Ideeën / activiteiten</Link>
         </Button>
       </div>
     </div>

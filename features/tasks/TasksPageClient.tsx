@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ListTodo, Plus, Sparkles, Trash2 } from "lucide-react";
+import { CheckCircle2, ListTodo, Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -199,6 +199,7 @@ export function TasksPageClient({ trip }: TasksPageClientProps) {
   const [mutationErrorMessage, setMutationErrorMessage] = useState<
     string | null
   >(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const canEditTasks = canEditTripContent(currentMember?.role);
 
   useEffect(() => {
@@ -250,6 +251,9 @@ export function TasksPageClient({ trip }: TasksPageClientProps) {
     [filters, sortedTasks]
   );
   const openTaskCount = tasks.filter((task) => task.status !== "done").length;
+  const doneTaskCount = tasks.filter((task) => task.status === "done").length;
+  const donePercentage =
+    tasks.length > 0 ? Math.round((doneTaskCount / tasks.length) * 100) : 0;
   const hasActiveFilters =
     filters.query.trim().length > 0 ||
     filters.status !== "all" ||
@@ -265,6 +269,7 @@ export function TasksPageClient({ trip }: TasksPageClientProps) {
 
     setEditingTask(undefined);
     setMutationErrorMessage(null);
+    setStatusMessage(null);
     setDialogMode("create");
   }
 
@@ -276,6 +281,7 @@ export function TasksPageClient({ trip }: TasksPageClientProps) {
 
     setEditingTask(task);
     setMutationErrorMessage(null);
+    setStatusMessage(null);
     setDialogMode("edit");
   }
 
@@ -298,6 +304,7 @@ export function TasksPageClient({ trip }: TasksPageClientProps) {
 
     setIsSaving(true);
     setMutationErrorMessage(null);
+    setStatusMessage(null);
 
     try {
       if (dialogMode === "edit" && editingTask) {
@@ -316,6 +323,9 @@ export function TasksPageClient({ trip }: TasksPageClientProps) {
 
       await refreshTasks();
       closeDialog();
+      setStatusMessage(
+        dialogMode === "edit" ? "Taak opgeslagen." : "Taak toegevoegd."
+      );
     } catch (error) {
       console.error("Taak opslaan mislukt", error);
       setMutationErrorMessage(getErrorMessage(error));
@@ -337,10 +347,14 @@ export function TasksPageClient({ trip }: TasksPageClientProps) {
 
     setIsSaving(true);
     setMutationErrorMessage(null);
+    setStatusMessage(null);
 
     try {
       await toggleTaskDone(trip.id, task.id, task.status !== "done", user.uid);
       await refreshTasks();
+      setStatusMessage(
+        task.status === "done" ? "Taak opnieuw geopend." : "Taak afgevinkt."
+      );
     } catch (error) {
       console.error("Taak afvinken mislukt", error);
       setMutationErrorMessage(getErrorMessage(error));
@@ -356,6 +370,7 @@ export function TasksPageClient({ trip }: TasksPageClientProps) {
     }
 
     setMutationErrorMessage(null);
+    setStatusMessage(null);
     setTaskToDelete(task);
   }
 
@@ -366,11 +381,13 @@ export function TasksPageClient({ trip }: TasksPageClientProps) {
 
     setIsSaving(true);
     setMutationErrorMessage(null);
+    setStatusMessage(null);
 
     try {
       await deleteTaskForTrip(trip.id, taskToDelete.id);
       await refreshTasks();
       setTaskToDelete(null);
+      setStatusMessage("Taak verwijderd.");
     } catch (error) {
       console.error("Taak verwijderen mislukt", error);
       setMutationErrorMessage(getErrorMessage(error));
@@ -420,6 +437,7 @@ export function TasksPageClient({ trip }: TasksPageClientProps) {
       {mutationErrorMessage ? (
         <InlineErrorMessage message={mutationErrorMessage} />
       ) : null}
+      {statusMessage ? <InlineSuccessMessage message={statusMessage} /> : null}
 
       {loadErrorMessage ? (
         <StatusState
@@ -436,22 +454,34 @@ export function TasksPageClient({ trip }: TasksPageClientProps) {
       ) : (
         <>
           <section className="rounded-xl border border-lime-100 bg-white/90 p-4 shadow-[0_12px_30px_rgba(132,204,22,0.08)]">
-            <div className="flex gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-lime-50 text-lime-700">
-                <ListTodo className="size-5" aria-hidden="true" />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-lime-50 text-lime-700">
+                  <ListTodo className="size-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-slate-950">
+                    {doneTaskCount} van {tasks.length} taken klaar
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    {openTaskCount === 0
+                      ? "Alles staat op klaar. Lekker overzichtelijk."
+                      : `${openTaskCount} ${
+                          openTaskCount === 1 ? "taak staat" : "taken staan"
+                        } nog open.`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-semibold text-slate-950">
-                  Nog te regelen
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  {openTaskCount === 0
-                    ? "Alles staat op klaar. Lekker overzichtelijk."
-                    : `${openTaskCount} ${
-                        openTaskCount === 1 ? "taak staat" : "taken staan"
-                      } nog open.`}
-                </p>
+              <div className="flex items-center gap-2 text-sm font-semibold text-lime-800">
+                <CheckCircle2 className="size-4" aria-hidden="true" />
+                {donePercentage}%
               </div>
+            </div>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-lime-50">
+              <div
+                className="h-full rounded-full bg-lime-400 transition-all"
+                style={{ width: `${donePercentage}%` }}
+              />
             </div>
           </section>
 
@@ -609,6 +639,14 @@ type InlineErrorMessageProps = {
 function InlineErrorMessage({ message }: InlineErrorMessageProps) {
   return (
     <div className="rounded-xl border border-pink-100 bg-pink-50 px-4 py-3 text-sm leading-6 text-pink-800">
+      {message}
+    </div>
+  );
+}
+
+function InlineSuccessMessage({ message }: InlineErrorMessageProps) {
+  return (
+    <div className="rounded-xl border border-lime-100 bg-lime-50 px-4 py-3 text-sm leading-6 text-lime-800">
       {message}
     </div>
   );

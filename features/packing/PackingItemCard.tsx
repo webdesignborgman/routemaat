@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,6 @@ export function PackingItemCard({
   onEdit,
   onDelete,
 }: PackingItemCardProps) {
-  const ToggleIcon = checked ? CheckCircle2 : Circle;
-
   return (
     <Card
       className={`border-cyan-100 bg-white/95 shadow-[0_10px_26px_rgba(14,165,233,0.08)] ${
@@ -104,19 +102,18 @@ export function PackingItemCard({
           </p>
         ) : null}
         {tripMode ? (
-          <Button
-            type="button"
-            variant={checked ? "outline" : "default"}
-            className={
-              checked
-                ? "w-full justify-start border-lime-100 bg-white text-lime-800 hover:bg-lime-50 sm:w-auto"
-                : "w-full justify-start bg-slate-950 text-white hover:bg-slate-800 sm:w-auto"
-            }
-            onClick={() => onToggleChecked?.(item, !checked)}
-          >
-            <ToggleIcon className="size-4" aria-hidden="true" />
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-lime-100 bg-lime-50 px-3 py-2 text-sm font-medium text-lime-800 transition hover:bg-lime-100">
+            <input
+              type="checkbox"
+              checked={checked}
+              aria-label={`${item.name} ${
+                checked ? "niet ingepakt" : "ingepakt"
+              } markeren`}
+              onChange={(event) => onToggleChecked?.(item, event.target.checked)}
+              className="size-4 rounded border-lime-300"
+            />
             {checked ? "Ingepakt" : "Nog inpakken"}
-          </Button>
+          </label>
         ) : null}
       </CardContent>
     </Card>

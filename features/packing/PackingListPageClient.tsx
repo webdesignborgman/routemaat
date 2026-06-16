@@ -58,7 +58,7 @@ type CategoryFilter = PackingCategory | "all";
 
 const statusFilterLabels: Record<PackingStatusFilter, string> = {
   all: "Alles",
-  open: "Openstaand",
+  open: "Nog inpakken",
   checked: "Ingepakt",
 };
 
@@ -151,6 +151,7 @@ export function PackingListPageClient({ trip }: PackingListPageClientProps) {
   const [mutationErrorMessage, setMutationErrorMessage] = useState<
     string | null
   >(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const tripMode = Boolean(trip);
 
   useEffect(() => {
@@ -260,12 +261,14 @@ export function PackingListPageClient({ trip }: PackingListPageClientProps) {
   function openCreateDialog() {
     setEditingItem(undefined);
     setMutationErrorMessage(null);
+    setStatusMessage(null);
     setIsItemDialogOpen(true);
   }
 
   function openEditDialog(item: PackingItem) {
     setEditingItem(item);
     setMutationErrorMessage(null);
+    setStatusMessage(null);
     setIsItemDialogOpen(true);
   }
 
@@ -289,6 +292,7 @@ export function PackingListPageClient({ trip }: PackingListPageClientProps) {
 
     setIsSaving(true);
     setMutationErrorMessage(null);
+    setStatusMessage(null);
 
     try {
       if (editingItem) {
@@ -303,6 +307,9 @@ export function PackingListPageClient({ trip }: PackingListPageClientProps) {
 
       await refreshItems();
       closeItemDialog();
+      setStatusMessage(
+        editingItem ? "Item opgeslagen." : "Item toegevoegd aan je inpaklijst."
+      );
     } catch (error) {
       console.error("Inpakitem opslaan mislukt", error);
       setMutationErrorMessage(getErrorMessage(error));
@@ -319,10 +326,16 @@ export function PackingListPageClient({ trip }: PackingListPageClientProps) {
 
     setIsSaving(true);
     setMutationErrorMessage(null);
+    setStatusMessage(null);
 
     try {
-      await createDefaultPackingItemsForUser(user.uid);
+      const createdCount = await createDefaultPackingItemsForUser(user.uid);
       await refreshItems();
+      setStatusMessage(
+        createdCount > 0
+          ? "Basislijst aangemaakt."
+          : "Je inpaklijst bevat al items."
+      );
     } catch (error) {
       console.error("Basislijst aanmaken mislukt", error);
       setMutationErrorMessage(getErrorMessage(error));
@@ -364,11 +377,13 @@ export function PackingListPageClient({ trip }: PackingListPageClientProps) {
 
     setIsSaving(true);
     setMutationErrorMessage(null);
+    setStatusMessage(null);
 
     try {
       await deletePackingItemForUser(user.uid, itemToDelete.id);
       await refreshItems();
       setItemToDelete(null);
+      setStatusMessage("Item verwijderd.");
     } catch (error) {
       console.error("Inpakitem verwijderen mislukt", error);
       setMutationErrorMessage(getErrorMessage(error));
@@ -384,11 +399,13 @@ export function PackingListPageClient({ trip }: PackingListPageClientProps) {
 
     setIsSaving(true);
     setMutationErrorMessage(null);
+    setStatusMessage(null);
 
     try {
       await resetPackingChecksForTrip(trip.id, user.uid);
       setCheckedItemIds(new Set());
       setIsResetDialogOpen(false);
+      setStatusMessage("Checks voor deze reis zijn gereset.");
     } catch (error) {
       console.error("Inpakchecks resetten mislukt", error);
       setMutationErrorMessage(getErrorMessage(error));
@@ -448,6 +465,7 @@ export function PackingListPageClient({ trip }: PackingListPageClientProps) {
       {mutationErrorMessage ? (
         <InlineErrorMessage message={mutationErrorMessage} />
       ) : null}
+      {statusMessage ? <InlineSuccessMessage message={statusMessage} /> : null}
 
       {trip ? (
         <PackingProgress
@@ -719,6 +737,14 @@ type InlineErrorMessageProps = {
 function InlineErrorMessage({ message }: InlineErrorMessageProps) {
   return (
     <div className="rounded-xl border border-pink-100 bg-pink-50 px-4 py-3 text-sm leading-6 text-pink-800">
+      {message}
+    </div>
+  );
+}
+
+function InlineSuccessMessage({ message }: InlineErrorMessageProps) {
+  return (
+    <div className="rounded-xl border border-lime-100 bg-lime-50 px-4 py-3 text-sm leading-6 text-lime-800">
       {message}
     </div>
   );
